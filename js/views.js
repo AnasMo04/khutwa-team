@@ -97,7 +97,7 @@ export const views = {
     ) +
     sc(
       t('acts'),
-      `<div class="grid">${store.db.gal.slice(0, 3).map(tile).join('')}</div>`,
+      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').slice(0, 3).map(tile).join('')}</div>`,
       0,
       'dk s6'
     ) +
@@ -222,7 +222,7 @@ export const views = {
     ) +
     sc(
       t('gal'),
-      `<div class="grid">${store.db.gal.map(tile).join('') || t('empty')}</div>`,
+      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').map(tile).join('') || t('empty')}</div>`,
       0,
       'dk s6'
     ),

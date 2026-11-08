@@ -40,6 +40,7 @@ import {
   exportCheckinsCSV,
   printCheckinPoster,
   uploadGalleryImages,
+  uploadImageFile,
   ADMIN_CONFIG
 } from './admin.js';
 
@@ -383,6 +384,29 @@ document.addEventListener('change', async x => {
     } catch (err) {
       console.error('Upload error:', err);
       $('#upm').textContent = t('upe');
+    }
+  }
+  if (e.classList.contains('f-entity-up') && e.files && e.files[0]) {
+    const k = e.dataset.k;
+    const scope = e.dataset.scope || 'general';
+    const msgEl = $(`#up_${k}_msg`);
+    try {
+      if (msgEl) msgEl.textContent = '…';
+      const record = await uploadImageFile(e.files[0], scope);
+      await store.syncToSupabase();
+      const selectEl = $(`#sel_${k}`);
+      if (selectEl) {
+        const opt = document.createElement('option');
+        opt.value = record.id;
+        opt.textContent = record.id;
+        opt.selected = true;
+        selectEl.appendChild(opt);
+      }
+      if (msgEl) msgEl.textContent = '✓ ' + t(IS_LIVE ? 'saved2' : 'saved');
+      toast(t(IS_LIVE ? 'saved2' : 'saved'));
+    } catch (err) {
+      console.error('Entity image upload error:', err);
+      if (msgEl) msgEl.textContent = t('upe');
     }
   }
 });

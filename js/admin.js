@@ -61,8 +61,8 @@ export const ADMIN_CONFIG = {
       ['price', 'n'],
       ['sizes', 't'],
       ['desc', 'b'],
-      ['status', 's', ['avail', 'soldout']],
-      ['img', 'p']
+      ['status', 's', ['avail', 'soldout'], 'status', 'booking_status'],
+      ['img', 'p', null, 'img', 'prod_img']
     ]
   },
   orders: {
@@ -241,10 +241,10 @@ function cell(c, k, r) {
     return `<span class="tmb" style="background-image:${
       r.url ? `url('${E(r.url)}')` : `var(--i${r.i})`
     }"></span>`;
-  if (k === 'status' && (c === 'joins' || c === 'orders')) {
-    const list = c === 'orders' ? ORDER_STATUSES : JOIN_STATUSES;
+  if (k === 'status' && (c === 'joins' || c === 'orders' || c === 'shop')) {
+    const list = c === 'orders' ? ORDER_STATUSES : c === 'shop' ? ['avail', 'soldout'] : JOIN_STATUSES;
     return `<select data-st="${r.id}" data-c="${c}" aria-label="${t(
-      'status'
+      c === 'shop' ? 'booking_status' : 'status'
     )}">${list
       .map(
         s => `<option value="${s}"${s === v ? ' selected' : ''}>${t(s)}</option>`
@@ -260,7 +260,9 @@ function cell(c, k, r) {
 export function renderTable(c) {
   const g = ADMIN_CONFIG[c];
   if (!g) return `<div class="card"><p>${t('empty')}</p></div>`;
-  const rows = store.db[c] || [];
+  const rows = c === 'gal'
+    ? (store.db.gal || []).filter(g => !g.scope || g.scope === 'general')
+    : (store.db[c] || []);
   const B = (a, r, x, k = '') =>
     `<button class="btn s ${k}" data-a="${a}" data-c="${c}" data-i="${r.id}">${t(
       x
@@ -340,8 +342,8 @@ export function openEditForm(c, id) {
   $('#fb').innerHTML =
     `<h3>${t(id ? 'edit' : 'add')}</h3>` +
     g.f
-      .map(([k, ty, o]) => {
-        const label = t(k);
+      .map(([k, ty, o, altName, labelKey]) => {
+        const label = t(labelKey || k);
         const v = r[k];
         if (ty === 'b') {
           return ['en', 'ar']
@@ -382,14 +384,20 @@ export function openEditForm(c, id) {
             .join('')}</select></label>`;
         }
         if (ty === 'p') {
-          return `<label>${label}<select name="${k}"><option value="">-</option>${store.db.gal
+          const entityScope = c === 'shop' ? 'product' : c === 'members' ? 'member' : 'general';
+          const options = store.db.gal
+            .filter(pic => (pic.scope || 'general') === entityScope || pic.id === v)
             .map(
               pic =>
                 `<option value="${pic.id}"${pic.id === v ? ' selected' : ''}>${E(
                   L(pic.cap) || pic.id
                 )}</option>`
             )
-            .join('')}</select></label>`;
+            .join('');
+
+          return `<label>${label}<select name="${k}" id="sel_${k}"><option value="">-</option>${options}</select></label><div style="margin-top:-6px;margin-bottom:10px"><label class="btn s" style="margin:0;display:inline-block;cursor:pointer">${t(
+            'upl_single'
+          )}<input type="file" class="f-entity-up" data-k="${k}" data-scope="${entityScope}" accept="image/*" hidden></label><span id="up_${k}_msg" class="m" style="margin-inline-start:8px"></span></div>`;
         }
         if (ty === 'c') {
           return `<label><input type="checkbox" name="${k}" style="width:auto"${
@@ -504,43 +512,48 @@ export function printCheckinPoster() {
   setTimeout(() => window.print(), 400);
 }
 
-export async function uploadGalleryImages(files) {
+export async function uploadImageFile(file, scope = 'general') {
   const sb = getSupabase();
+  const bitmap = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * k);
+  canvas.height = Math.round(bitmap.height * k);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
+
+  const prefix = scope === 'general' ? 'gal' : scope;
+  const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
+
+  let url = '';
+  if (sb) {
+    const { data, error } = await sb.storage.from('gallery').upload(path, blob, {
+      contentType: 'image/jpeg'
+    });
+    if (error) throw error;
+    const { data: publicUrlData } = sb.storage.from('gallery').getPublicUrl(path);
+    url = publicUrlData.publicUrl;
+  } else {
+    url = URL.createObjectURL(blob);
+  }
+
+  const record = {
+    id: 'g_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4),
+    aid: path,
+    url,
+    scope,
+    cap: { en: '', ar: '' }
+  };
+
+  store.db.gal.push(record);
+  return record;
+}
+
+export async function uploadGalleryImages(files) {
   const upm = $('#upm');
   for (const f of files) {
     if (upm) upm.textContent = '…';
-    const bitmap = await createImageBitmap(f);
-    const k = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * k);
-    canvas.height = Math.round(bitmap.height * k);
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
-
-    const path = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
-
-    if (sb) {
-      const { data, error } = await sb.storage.from('gallery').upload(path, blob, {
-        contentType: 'image/jpeg'
-      });
-      if (error) throw error;
-      const { data: publicUrlData } = sb.storage.from('gallery').getPublicUrl(path);
-      store.db.gal.push({
-        id: 'g_' + Date.now().toString(36),
-        aid: path,
-        url: publicUrlData.publicUrl,
-        cap: { en: '', ar: '' }
-      });
-    } else {
-      // Demo fallback: local object URL
-      const url = URL.createObjectURL(blob);
-      store.db.gal.push({
-        id: 'g_' + Date.now().toString(36),
-        aid: path,
-        url,
-        cap: { en: '', ar: '' }
-      });
-    }
+    await uploadImageFile(f, 'general');
   }
   if (upm) upm.textContent = '';
 }
