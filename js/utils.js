@@ -48,7 +48,10 @@ export function ss(k, v) {
 export const $ = s => document.querySelector(s);
 export const $$ = s => [...document.querySelectorAll(s)];
 
-export const t = k => (S[k] || [k, k])[lang === 'ar' ? 1 : 0];
+export const t = k => {
+  if (k == null || k === '') return '';
+  return (S[k] || [k, k])[lang === 'ar' ? 1 : 0];
+};
 
 export const L = o => {
   if (o && typeof o === 'object') {

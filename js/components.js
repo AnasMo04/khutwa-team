@@ -79,10 +79,13 @@ export const evCard = v =>
     L(v.point)
   )}</p><p>${E(L(v.desc))}</p>${A('event-' + v.id, t('details'), 'btn s')}</article>`;
 
-export const achCard = a =>
-  `<article class="card"><span class="tag">${t(a.cat)}</span><h3>${E(
-    L(a.title)
-  )}</h3><p class="m">${E(a.who)}</p><span class="tag g">${t('sample')}</span></article>`;
+export const achCard = a => {
+  const catLabel = a.cat ? t(a.cat) : '';
+  const whoText = a.who ? E(a.who) : '';
+  return `<article class="card">${
+    catLabel ? `<span class="tag">${catLabel}</span>` : ''
+  }<h3>${E(L(a.title))}</h3>${whoText ? `<p class="m">${whoText}</p>` : ''}</article>`;
+};
 
 export const inp = (k, l, r, ty = 'text') =>
   `<label for="${k}">${t(l)}${r ? ' *' : ''}</label><input id="${k}" name="${k}" type="${ty}"${
