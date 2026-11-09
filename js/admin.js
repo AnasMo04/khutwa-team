@@ -1,7 +1,7 @@
 import { store, CONTENT_KINDS, PEOPLE_KINDS, TABLE_MAP } from './data.js';
 import { IS_LIVE, signIn, signOut, verifyOrganizerPrivileges, getSupabase } from './supabase.js';
 import { S } from './translations.js';
-import { t, E, L, fmt, U, $, toast } from './utils.js';
+import { t, E, L, fmt, U, $, toast, normPhone } from './utils.js';
 import { A, backBtn, sc, isUpcoming } from './components.js';
 
 export const ORDER_STATUSES = ['new', 'contacted', 'confirmed', 'delivered', 'cancelled'];
@@ -318,16 +318,26 @@ export function renderTable(c) {
 }
 
 export function filterTableRows() {
-  const q = ($('#q')?.value || '').toLowerCase();
+  const rawQ = $('#q')?.value || '';
+  const q = rawQ.trim().toLowerCase();
+  const qPhone = normPhone(rawQ);
   const s = $('#fs') ? $('#fs').value : '';
   let n = 0;
-  document.querySelectorAll('.li').forEach(r => {
-    const matchesQuery = r.textContent.toLowerCase().includes(q);
+
+  const rows = document.querySelectorAll('#ls .li');
+  rows.forEach(r => {
+    let matchesQuery = true;
+    if (q) {
+      const text = (r.textContent || '').toLowerCase();
+      const phoneAttr = r.dataset.phone || '';
+      matchesQuery = text.includes(q) || (qPhone && phoneAttr && phoneAttr.includes(qPhone));
+    }
     const matchesStatus = !s || r.dataset.s === s;
     const hide = !(matchesQuery && matchesStatus);
     r.hidden = hide;
     if (!hide) n++;
   });
+
   const em = $('#em');
   if (em) em.hidden = n > 0;
 }
@@ -464,7 +474,7 @@ export function renderCheckinPanel() {
   )}" aria-label="${t('search')}"></div><div id="ls">${rows
     .map(
       r =>
-        `<div class="li"><div class="lm"><b>${E(r.name)}</b><div class="lc"><span><em>${t(
+        `<div class="li" data-phone="${E(normPhone(r.phone))}"><div class="lm"><b>${E(r.name)}</b><div class="lc"><span><em>${t(
           'phone'
         )}</em> ${E(r.phone)}</span><span><em>${t('ci_age')}</em> ${
           r.age
