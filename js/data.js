@@ -258,7 +258,12 @@ export class Store {
         if (r.kind === 'set') {
           this.db.set = { ...this.db.set, ...r.data };
         } else if (CONTENT_KINDS.includes(r.kind) && Array.isArray(this.db[r.kind])) {
-          this.db[r.kind].push({ ...r.data, id: r.id });
+          const item = { ...r.data, id: r.id };
+          if (r.kind === 'events') {
+            if (!item.type) item.type = 'run5';
+            if (!item.status) item.status = 'open';
+          }
+          this.db[r.kind].push(item);
         }
       });
     }
