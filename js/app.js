@@ -244,6 +244,16 @@ document.addEventListener('click', async x => {
   const c = d.c;
   const i = d.i;
 
+  if (d.a === 'back') {
+    x.preventDefault();
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate(d.backTo || 'home');
+    }
+    return;
+  }
+
   if (d.a === 'lang') {
     const nextLang = getLang() === 'ar' ? 'en' : 'ar';
     setLang(nextLang);
@@ -739,6 +749,7 @@ window.addEventListener('hashchange', () => {
 // App Bootstrap
 export async function bootstrap() {
   initLang();
+  currentRoute = (location.hash || '#home').slice(1);
   const theme = localStorage.getItem('khutwa_theme');
   if (theme) document.documentElement.dataset.theme = theme;
   setInterval(tickCountdown, 1000);
