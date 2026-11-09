@@ -2,7 +2,7 @@ import { S } from './translations.js';
 
 const mem = {};
 
-export let lang = 'en';
+export let lang = 'ar';
 
 export function getLang() {
   return lang;
@@ -19,9 +19,9 @@ export function setLang(l) {
 
 export function initLang() {
   try {
-    lang = localStorage.getItem('khutwa_lang') || 'en';
+    lang = localStorage.getItem('khutwa_lang') || 'ar';
   } catch (e) {
-    lang = mem['khutwa_lang'] || 'en';
+    lang = mem['khutwa_lang'] || 'ar';
   }
 }
 

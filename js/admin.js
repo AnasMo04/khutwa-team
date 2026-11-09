@@ -2,7 +2,7 @@ import { store, CONTENT_KINDS, PEOPLE_KINDS, TABLE_MAP } from './data.js';
 import { IS_LIVE, signIn, signOut, verifyOrganizerPrivileges, getSupabase } from './supabase.js';
 import { S } from './translations.js';
 import { t, E, L, fmt, U, $, toast } from './utils.js';
-import { A, sc, isUpcoming } from './components.js';
+import { A, backBtn, sc, isUpcoming } from './components.js';
 
 export const ORDER_STATUSES = ['new', 'contacted', 'confirmed', 'delivered', 'cancelled'];
 export const JOIN_STATUSES = ['pending', 'approved', 'rejected'];
@@ -129,7 +129,8 @@ export function renderAdminView(tab, onNavigate) {
   ).join('')}</aside>`;
 
   const isPeopleTab = ['checkin', 'orders', 'regs', 'joins'].includes(validTab);
-  const bar = `<div class="abar"><div><h2>${t(validTab)}</h2>${
+  const backToOverview = validTab !== 'overview' ? backBtn('admin', 'overview') + ' ' : '';
+  const bar = `<div class="abar"><div>${backToOverview}<h2>${t(validTab)}</h2>${
     validTab !== 'overview'
       ? `<p class="m">${t('d_' + validTab)} <span class="tag g">${t(
           isPeopleTab ? (IS_LIVE ? 'vis_priv' : 'vis_loc') : 'vis_pub'
