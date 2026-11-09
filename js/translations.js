@@ -136,6 +136,7 @@ export const S = {
   ci_btn: ['Check me in', 'سجّل حضوري'],
   ci_ok: ['You are checked in. Have a great run!', 'تم تسجيل حضورك. جرية موفقة!'],
   ci_dup: ['You are already checked in for this run.', 'أنت مسجّل حضور مسبقًا في هذه الجرية.'],
+  ci_wait: ['Please wait a moment before trying again.', 'يرجى الانتظار قليلًا قبل المحاولة مرة أخرى.'],
   e_name3: ['Please enter your full three-part name.', 'يرجى كتابة الاسم الثلاثي كاملًا.'],
   e_age: ['Please enter a valid age.', 'يرجى إدخال عمر صحيح.'],
   e_cons: ['Please accept the consent box.', 'يرجى الموافقة على استخدام البيانات.'],

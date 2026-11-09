@@ -280,18 +280,21 @@ export class Store {
     const sb = getSupabase();
     if (!sb || !this.isAdmin) return;
 
-    for (const k of PEOPLE_KINDS) {
-      const tableName = TABLE_MAP[k];
-      const { data, error } = await sb
-        .from(tableName)
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(1000);
+    // Concurrently load people tables in parallel for maximum performance
+    await Promise.all(
+      PEOPLE_KINDS.map(async k => {
+        const tableName = TABLE_MAP[k];
+        const { data, error } = await sb
+          .from(tableName)
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(1000);
 
-      if (!error && Array.isArray(data)) {
-        this.db[k] = data;
-      }
-    }
+        if (!error && Array.isArray(data)) {
+          this.db[k] = data;
+        }
+      })
+    );
   }
 
   async syncToSupabase() {
