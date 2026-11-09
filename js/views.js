@@ -227,20 +227,22 @@ export const views = {
   routes: () =>
     sc(
       t('routes'),
-      `<div class="grid">${store.db.routes
+      `<div class="grid routes-grid">${store.db.routes
         .map(
-          r =>
-            `<article class="card"><span class="tag">${t(
-              r.level
-            )}</span><span class="tag g">${t('sample')}</span><h3>${E(
+          r => {
+            const levelTag = r.level ? `<span class="tag">${t(r.level)}</span>` : '';
+            const kmText = r.km != null && r.km !== '' ? `${r.km} ${t('kmu')}` : '';
+            const fromText = L(r.from);
+            const metaParts = [kmText, fromText ? `${t('from')}: ${E(fromText)}` : ''].filter(Boolean).join(' · ');
+            const safetyText = L(r.safety);
+            const mapLink = r.map ? `<div class="card-act"><a class="btn s" href="${U(r.map)}" target="_blank" rel="noopener">${t('mapbtn')}</a></div>` : '';
+
+            return `<article class="card route-card">${levelTag}<h3>${E(
               L(r.name)
-            )}</h3><p class="m">${r.km} ${t('kmu')} · ${t('from')}: ${E(
-              L(r.from)
-            )}</p><p><b>${t('safety')}:</b> ${E(
-              L(r.safety)
-            )}</p><a href="${U(r.map)}" target="_blank" rel="noopener">${t(
-              'mapbtn'
-            )}</a></article>`
+            )}</h3>${metaParts ? `<p class="m">${metaParts}</p>` : ''}${
+              safetyText ? `<p class="route-safety"><b>${t('safety')}:</b> ${E(safetyText)}</p>` : ''
+            }${mapLink}</article>`;
+          }
         )
         .join('') || t('empty')}</div>`,
       t('routes_p'),

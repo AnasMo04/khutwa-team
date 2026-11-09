@@ -262,6 +262,11 @@ export class Store {
           if (r.kind === 'events') {
             if (!item.type) item.type = 'run5';
             if (!item.status) item.status = 'open';
+          } else if (r.kind === 'ach') {
+            if (!item.cat) item.cat = 'first5k';
+            if (!item.who) item.who = '';
+          } else if (r.kind === 'routes') {
+            if (!item.level) item.level = 'easy';
           }
           this.db[r.kind].push(item);
         }

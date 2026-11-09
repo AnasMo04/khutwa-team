@@ -69,6 +69,9 @@ footer{position:relative;overflow:hidden;border-top:6px solid var(--ac);backgrou
 .tee-placeholder svg{width:55%;max-height:80%}
 .tee-placeholder .lgo{position:absolute;width:14%;height:14%;top:36%;inset-inline:0;margin:auto}
 .tee-placeholder small{position:absolute;bottom:8px;color:#aaa;font-size:11px}
+.route-card{display:flex;flex-direction:column}
+.route-card .route-safety{flex:1;margin:10px 0 16px;font-size:14px;color:var(--mut);line-height:1.5}
+.card-act{margin-top:auto;padding-top:12px}
 .store-grid{display:grid;gap:24px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin:24px 0}
 .prod-card{display:flex;flex-direction:column;padding:20px;border-radius:4px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--fg)}
 .prod-media{margin-bottom:16px}
