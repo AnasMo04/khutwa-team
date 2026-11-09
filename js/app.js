@@ -443,22 +443,28 @@ document.addEventListener('submit', async x => {
     if (!itemConfig) return;
     const obj = {};
 
-    itemConfig.f.forEach(([fieldKey, type, opt]) => {
+    itemConfig.f.forEach(([fieldKey, type, opt, altName]) => {
+      const formKey = (type === 't' && typeof opt === 'string' && opt) || fieldKey;
+      const targetKey =
+        (typeof altName === 'string' && altName) ||
+        (type === 't' && typeof opt === 'string' && opt) ||
+        fieldKey;
+
       if (type === 'b') {
         obj[fieldKey] = {
           en: data[fieldKey + '__en'] || '',
           ar: data[fieldKey + '__ar'] || ''
         };
       } else if (type === 'c') {
-        obj[fieldKey] = Boolean(data[fieldKey]);
+        obj[fieldKey] = Boolean(data[formKey]);
       } else if (type === 'n') {
-        obj[fieldKey] = +data[fieldKey] || 0;
+        obj[fieldKey] = +data[formKey] || 0;
       } else if (type === 'd') {
         obj[fieldKey] = new Date(
-          new Date(data[fieldKey] + ':00Z').getTime() - 72e5
+          new Date(data[formKey] + ':00Z').getTime() - 72e5
         ).toISOString();
       } else {
-        obj[opt || fieldKey] = data[opt || fieldKey] || '';
+        obj[targetKey] = data[formKey] ?? '';
       }
     });
 

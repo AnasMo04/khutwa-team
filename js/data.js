@@ -263,6 +263,7 @@ export class Store {
             if (!item.type) item.type = 'run5';
             if (!item.status) item.status = 'open';
           } else if (r.kind === 'ach') {
+            delete item['first5k,pb,consist,part,monthly'];
             if (!item.cat) item.cat = 'first5k';
             if (!item.who) item.who = '';
           } else if (r.kind === 'routes') {
