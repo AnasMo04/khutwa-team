@@ -11,6 +11,7 @@ const KIND_BY_TABLE = Object.fromEntries(
 let channels = [];
 let pollTimer = null;
 let subscribeTimer = null;
+let notifyTimer = null;
 let onChange = null;
 let started = false;
 let realtimeOk = false;
@@ -93,11 +94,19 @@ function applyPayload(payload) {
   return false;
 }
 
+function scheduleNotify() {
+  if (notifyTimer) clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => {
+    notifyTimer = null;
+    if (started && typeof onChange === 'function') onChange();
+  }, 300);
+}
+
 async function notifyIfChanged(changed) {
   if (!changed) return;
   lastSig = sig();
   store.takeSnapshot();
-  if (typeof onChange === 'function') onChange();
+  scheduleNotify();
 }
 
 async function onRealtime(payload) {
@@ -191,6 +200,10 @@ export function stopLiveUpdates() {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+  if (notifyTimer) {
+    clearTimeout(notifyTimer);
+    notifyTimer = null;
   }
   if (subscribeTimer) {
     clearTimeout(subscribeTimer);

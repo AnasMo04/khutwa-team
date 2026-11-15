@@ -1,5 +1,6 @@
 import { getSupabase, IS_LIVE, SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
 import { sg, ss, uid } from './utils.js';
+import { report } from './log.js';
 
 export const CONTENT_KINDS = ['events', 'members', 'ach', 'routes', 'gal', 'set', 'shop'];
 export const PEOPLE_KINDS = ['regs', 'joins', 'orders', 'checkins'];
@@ -183,6 +184,25 @@ export class Store {
     this.isEmpty = false;
     this.selectedCheckinEvent = '';
     this.snap = {};
+    this.peopleGen = 0;
+  }
+
+  /**
+   * Apply mutator, sync, and restore the previous db if sync throws.
+   * Remote writes that already succeeded are not rolled back on the server.
+   */
+  async commit(mutator) {
+    const backup = JSON.parse(JSON.stringify(this.db));
+    const snapBackup = this.snap;
+    mutator(this.db);
+    try {
+      await this.syncToSupabase();
+    } catch (err) {
+      this.db = backup;
+      this.snap = snapBackup;
+      report(err, 'e_save');
+      throw err;
+    }
   }
 
   getContent() {
@@ -204,22 +224,18 @@ export class Store {
 
   loadDemo() {
     this.db = seed();
-    try {
-      const l = JSON.parse(sg('khutwa_loc'));
-      if (l) {
-        PEOPLE_KINDS.forEach(k => {
-          if (l[k]) this.db[k] = l[k];
-        });
-      }
-    } catch (e) {}
-    try {
-      const d = JSON.parse(sg('khutwa_draft'));
-      if (d) {
-        CONTENT_KINDS.forEach(k => {
-          if (d[k]) this.db[k] = d[k];
-        });
-      }
-    } catch (e) {}
+    const loc = readStored('khutwa_loc');
+    if (loc) {
+      PEOPLE_KINDS.forEach(k => {
+        if (Array.isArray(loc[k])) this.db[k] = loc[k];
+      });
+    }
+    const draft = readStored('khutwa_draft');
+    if (draft) {
+      CONTENT_KINDS.forEach(k => {
+        if (draft[k] != null) this.db[k] = draft[k];
+      });
+    }
     this.takeSnapshot();
   }
 
@@ -285,22 +301,24 @@ export class Store {
   async loadPeopleFromSupabase() {
     const sb = getSupabase();
     if (!sb || !this.isAdmin) return;
+    const gen = ++this.peopleGen;
 
-    // Concurrently load people tables in parallel for maximum performance
-    await Promise.all(
+    const loaded = await Promise.all(
       PEOPLE_KINDS.map(async k => {
-        const tableName = TABLE_MAP[k];
         const { data, error } = await sb
-          .from(tableName)
+          .from(TABLE_MAP[k])
           .select('*')
           .order('date', { ascending: false })
           .limit(1000);
-
-        if (!error && Array.isArray(data)) {
-          this.db[k] = data;
-        }
+        if (error || !Array.isArray(data)) return null;
+        return [k, data];
       })
     );
+
+    if (gen !== this.peopleGen) return;
+    loaded.forEach(pair => {
+      if (pair) this.db[pair[0]] = pair[1];
+    });
   }
 
   async syncToSupabase() {
@@ -353,7 +371,10 @@ export class Store {
             .delete()
             .match({ kind: k, id });
 
-          if (error) console.error('Error deleting content:', k, id, error);
+          if (error) {
+            console.error('Error deleting content:', k, id, error);
+            throw error;
+          }
         }
       }
     }
@@ -373,7 +394,10 @@ export class Store {
               .update(row)
               .eq('id', row.id);
 
-            if (error) console.error('Error updating row:', tableName, row.id, error);
+            if (error) {
+              console.error('Error updating row:', tableName, row.id, error);
+              throw error;
+            }
           }
         }
 
@@ -385,7 +409,10 @@ export class Store {
               .delete()
               .eq('id', id);
 
-            if (error) console.error('Error deleting row:', tableName, id, error);
+            if (error) {
+              console.error('Error deleting row:', tableName, id, error);
+              throw error;
+            }
           }
         }
       }
@@ -396,15 +423,31 @@ export class Store {
 
   async initializeDatabase() {
     const s = seed();
-    this.db.set = { ...this.db.set, ...s.set };
-    this.db.gal = s.gal;
-    this.db.shop = s.shop;
-    this.db.events = s.events;
-    this.db.ach = s.ach;
-    this.db.routes = s.routes;
-    this.db.members = s.members;
-    await this.syncToSupabase();
+    await this.commit(db => {
+      db.set = { ...db.set, ...s.set };
+      db.gal = s.gal;
+      db.shop = s.shop;
+      db.events = s.events;
+      db.ach = s.ach;
+      db.routes = s.routes;
+      db.members = s.members;
+    });
     this.isEmpty = false;
+  }
+}
+
+function readStored(key) {
+  const raw = sg(key);
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('bad cache');
+    }
+    return value;
+  } catch (err) {
+    report(err, 'e_save');
+    return null;
   }
 }
 

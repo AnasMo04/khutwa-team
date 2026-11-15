@@ -96,6 +96,10 @@ export function normPhone(p) {
   return m ? '218' + m[1] : x;
 }
 
+export function isServerPhone(p) {
+  return /^[0-9]{7,15}$/.test(normPhone(p));
+}
+
 export function isDark() {
   return (
     document.documentElement.dataset.theme ||
@@ -109,6 +113,7 @@ export function toast(m) {
     e = document.createElement('div');
     e.id = 'ts';
     e.setAttribute('role', 'status');
+    e.setAttribute('aria-live', 'polite');
     document.body.appendChild(e);
   }
   e.textContent = m;

@@ -65,6 +65,13 @@ export function matchesQuery(blob, query) {
   return false;
 }
 
+export function restoreSearchInputs() {
+  const qEl = $('#q');
+  const fsEl = $('#fs');
+  if (qEl) qEl.value = savedQuery.q;
+  if (fsEl && [...fsEl.options].some(o => o.value === savedQuery.fs)) fsEl.value = savedQuery.fs;
+}
+
 export function applySearchFilter() {
   const qEl = $('#q');
   const fsEl = $('#fs');

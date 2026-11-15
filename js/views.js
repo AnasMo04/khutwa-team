@@ -16,6 +16,7 @@ import {
   inp,
   tail,
   nextRunBadge,
+  challengeBar,
   tee,
   prod,
   tile,
@@ -71,11 +72,7 @@ export const views = {
     ) +
     sc(
       t('chl'),
-      `<div class="card"><div class="big">312 / 500 ${t(
-        'kmu'
-      )}</div><div class="bar2"><i style="width:62.4%"></i></div><p class="m">${t(
-        'chn'
-      )}</p></div>`,
+      challengeBar(),
       0,
       's4'
     ) +
@@ -283,7 +280,7 @@ export const views = {
             1
           )}${inp('phone', 'phone', 1, 'tel')}<label for="age">${t(
             'ci_age'
-          )} *</label><input id="age" name="age" type="number" min="1" max="99" inputmode="numeric" required><input name="hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true"><label class="cb"><input type="checkbox" name="consent" style="width:auto"> ${t(
+          )} *</label><input id="age" name="age" type="number" min="1" max="99" inputmode="numeric" required><input class="hp" name="hp" tabindex="-1" autocomplete="off" aria-hidden="true"><label class="cb"><input type="checkbox" name="consent" style="width:auto"> ${t(
             'ci_consent'
           )}</label><p class="m">${t('priv')}</p>${
             IS_LIVE ? '' : `<p class="m">${t('demo_note')}</p>`

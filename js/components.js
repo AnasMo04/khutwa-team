@@ -1,7 +1,26 @@
 import { store } from './data.js';
 import { t, E, L, fmt, U } from './utils.js';
 
-export const gi = g => (g && g.url ? `url('${E(g.url)}')` : g && g.i ? `var(--i${g.i})` : '');
+function cssUrl(u) {
+  const s = String(u || '').trim();
+  if (!/^https?:\/\/[^\s"'()<>\\]+$/i.test(s) && !/^blob:[^\s"'()<>\\]+$/i.test(s)) return '';
+  return `url('${s}')`;
+}
+
+export const gi = g => (g && g.url && cssUrl(g.url)) || (g && g.i ? `var(--i${g.i})` : '');
+
+/** Kilometers already run and the monthly goal. Missing or invalid settings fall back to 312 / 500. */
+export function challengeBar() {
+  const raw = (store.db.set && store.db.set.challenge) || {};
+  const done = Number(raw.done);
+  const goal = Number(raw.goal);
+  const km = Number.isFinite(done) && done >= 0 ? done : 312;
+  const target = Number.isFinite(goal) && goal > 0 ? goal : 500;
+  const pct = Math.max(0, Math.min(100, (km / target) * 100));
+  return `<div class="card"><div class="big">${km} / ${target} ${t(
+    'kmu'
+  )}</div><div class="bar2"><i style="width:${pct}%"></i></div><p class="m">${t('chn')}</p></div>`;
+}
 export const gb = id => {
   const g = store.db.gal.find(x => x.id === id);
   return g ? gi(g) : '';
@@ -51,14 +70,16 @@ export const TRK = () =>
     .join('')}</div>`;
 
 export const gcal = v => {
+  const start = new Date(v && v.when);
+  if (Number.isNaN(start.getTime())) return '#';
   const z = d => new Date(d).toISOString().replace(/[-:]|\.\d{3}/g, '');
   return (
     'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' +
     encodeURIComponent('KHUTWA TEAM: ' + L(v.title)) +
     '&dates=' +
-    z(v.when) +
+    z(start) +
     '/' +
-    z(new Date(v.when).getTime() + 36e5) +
+    z(start.getTime() + 36e5) +
     '&location=Misrata'
   );
 };
@@ -87,15 +108,18 @@ export const achCard = a => {
   }<h3>${E(L(a.title))}</h3>${whoText ? `<p class="m">${whoText}</p>` : ''}</article>`;
 };
 
-export const inp = (k, l, r, ty = 'text') =>
-  `<label for="${k}">${t(l)}${r ? ' *' : ''}</label><input id="${k}" name="${k}" type="${ty}"${
+export const inp = (k, l, r, ty = 'text') => {
+  const ac = ty === 'tel' ? 'tel' : ty === 'email' ? 'email' : k === 'name' ? 'name' : 'on';
+  const mode = ty === 'tel' ? 'tel' : ty === 'email' ? 'email' : 'text';
+  return `<label for="${k}">${t(l)}${r ? ' *' : ''}</label><input id="${k}" name="${k}" type="${ty}" autocomplete="${ac}" inputmode="${mode}"${
     r ? ' required' : ''
   } maxlength="80">`;
+};
 
 export const tail = (bt = 'submit', isLive = false) =>
-  `<p class="m">${t('priv')}</p>${
+  `<input class="hp" name="hp" tabindex="-1" autocomplete="off" aria-hidden="true"><p class="m">${t('priv')}</p>${
     isLive ? '' : `<p class="m">${t('demo_note')}</p>`
-  }<button class="btn p">${t(bt)}</button><div id="msg" role="status" aria-live="polite"></div></form>`;
+  }<button class="btn p" type="submit">${t(bt)}</button><div id="msg" role="status" aria-live="polite"></div></form>`;
 
 export const nextRunBadge = () => {
   const v = store.db.events

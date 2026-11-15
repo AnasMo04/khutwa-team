@@ -230,7 +230,11 @@ export function renderSettingsForm() {
     )
     .join(
       ''
-    )}</select></label><p><button class="btn p">${t('save')}</button></p></form>`;
+    )}</select></label><label>${t('ch_done')}<input name="challenge_done" type="number" min="0" max="100000" inputmode="numeric" value="${E(
+    ((store.db.set.challenge || {}).done ?? 312)
+  )}"></label><label>${t('ch_goal')}<input name="challenge_goal" type="number" min="1" max="100000" inputmode="numeric" value="${E(
+    ((store.db.set.challenge || {}).goal ?? 500)
+  )}"></label><p><button class="btn p" type="submit">${t('save')}</button></p></form>`;
 }
 
 function cell(c, k, r) {
@@ -240,7 +244,7 @@ function cell(c, k, r) {
     return E(L((store.db.shop.find(x => x.id === v) || {}).name));
   if (k === 'thumb')
     return `<span class="tmb" style="background-image:${
-      r.url ? `url('${E(r.url)}')` : `var(--i${r.i})`
+      r.url && /^https?:\/\/[^\s"'()<>\\]+$/i.test(r.url) ? `url('${r.url}')` : `var(--i${r.i})`
     }"></span>`;
   if (k === 'status' && (c === 'joins' || c === 'orders' || c === 'shop')) {
     const list = c === 'orders' ? ORDER_STATUSES : c === 'shop' ? ['avail', 'soldout'] : JOIN_STATUSES;
@@ -275,8 +279,16 @@ export function renderTable(c) {
     : g.f
     ? `<button class="btn p s" data-a="edit" data-c="${c}">${t('add')}</button>`
     : '';
+  const canExport = ['joins', 'regs', 'orders'].includes(c);
+  const exports = canExport
+    ? `<button type="button" class="btn s" data-a="csv" data-c="${c}">${t(
+        'csv'
+      )}</button><button type="button" class="btn s" data-a="xlsx" data-c="${c}">${t(
+        'export_excel'
+      )}</button>`
+    : '';
 
-  return `<div class="bar"><input id="q" placeholder="${t(
+  return `<div class="bar"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="${t(
     'search'
   )}" aria-label="${t('search')}">${
     g.fl
@@ -291,7 +303,7 @@ export function renderTable(c) {
           .map(s => `<option value="${s}">${t(s)}</option>`)
           .join('')}</select>`
       : ''
-  }${add}<span id="upm" class="m"></span></div><div id="ls">${rows
+  }${add}${exports}<span id="upm" class="m"></span></div><div id="ls">${rows
     .map(
       r =>
         `<div class="li" data-s="${r.status || ''}"><div class="lm"><b>${cell(
@@ -317,40 +329,18 @@ export function renderTable(c) {
   }><p>${t('empty')}</p>${rows.length ? '' : add}</div>`;
 }
 
-export function filterTableRows() {
-  const rawQ = $('#q')?.value || '';
-  const q = rawQ.trim().toLowerCase();
-  const qPhone = normPhone(rawQ);
-  const s = $('#fs') ? $('#fs').value : '';
-  let n = 0;
-
-  const rows = document.querySelectorAll('#ls .li');
-  rows.forEach(r => {
-    let matchesQuery = true;
-    if (q) {
-      const text = (r.textContent || '').toLowerCase();
-      const phoneAttr = r.dataset.phone || '';
-      matchesQuery = text.includes(q) || (qPhone && phoneAttr && phoneAttr.includes(qPhone));
-    }
-    const matchesStatus = !s || r.dataset.s === s;
-    const hide = !(matchesQuery && matchesStatus);
-    r.hidden = hide;
-    if (!hide) n++;
-  });
-
-  const em = $('#em');
-  if (em) em.hidden = n > 0;
-}
-
 export function openEditForm(c, id) {
   const r = id ? (store.db[c] || []).find(x => x.id === id) || {} : {};
   const df = $('#df');
+  const fb = $('#fb');
+  const dlg = $('#dlg');
+  if (!df || !fb || !dlg) return;
   df.dataset.c = c;
   df.dataset.i = id || '';
   const g = ADMIN_CONFIG[c];
   if (!g || !g.f) return;
 
-  $('#fb').innerHTML =
+  fb.innerHTML =
     `<h3>${t(id ? 'edit' : 'add')}</h3>` +
     g.f
       .map(([k, ty, o, altName, labelKey]) => {
@@ -421,7 +411,7 @@ export function openEditForm(c, id) {
       })
       .join('');
 
-  $('#dlg').showModal();
+  if (typeof dlg.showModal === 'function') dlg.showModal();
 }
 
 export function renderCheckinPanel() {
@@ -456,8 +446,10 @@ export function renderCheckinPanel() {
     'close_ci'
   )}</button> <button class="btn s" data-a="poster">${t(
     'poster'
-  )}</button> <button class="btn s" data-a="csv">${t(
+  )}</button> <button type="button" class="btn s" data-a="csv" data-c="checkins">${t(
     'csv'
+  )}</button> <button type="button" class="btn s" data-a="xlsx" data-c="checkins">${t(
+    'export_excel'
   )}</button></p></div><div class="grid">${[
     [t('stat_total'), rows.length],
     [t('stat_unique'), new Set(store.db.checkins.map(r => r.phone)).size],
@@ -469,7 +461,7 @@ export function renderCheckinPanel() {
       ([label, count]) =>
         `<div class="card"><div class="big">${count}</div>${label}</div>`
     )
-    .join('')}</div><div class="bar"><input id="q" placeholder="${t(
+    .join('')}</div><div class="bar"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="${t(
     'search'
   )}" aria-label="${t('search')}"></div><div id="ls">${rows
     .map(
@@ -487,55 +479,120 @@ export function renderCheckinPanel() {
   }><p>${t('empty')}</p></div>`;
 }
 
-export function exportCheckinsCSV() {
-  const currentEv = store.selectedCheckinEvent;
-  const rows = store.db.checkins.filter(r => r.ev === currentEv);
-  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const txt =
-    '\ufeff' +
-    [['name', 'phone', 'age', 'time'], ...rows.map(r => [r.name, r.phone, r.age, r.date || ''])]
-      .map(row => row.map(q).join(','))
-      .join('\r\n');
+const EXPORT_COLUMNS = {
+  checkins: ['name', 'phone', 'age', 'ev', 'date'],
+  joins: ['name', 'phone', 'email', 'level', 'reason', 'status', 'date'],
+  regs: ['name', 'phone', 'email', 'ev', 'note', 'date'],
+  orders: ['name', 'phone', 'pid', 'size', 'qty', 'status', 'note', 'date']
+};
+
+function exportRows(kind) {
+  const rows = store.db[kind] || [];
+  if (kind !== 'checkins') return rows;
+  const ev = store.selectedCheckinEvent;
+  return ev ? rows.filter(r => r.ev === ev) : rows;
+}
+
+function exportValue(kind, key, row) {
+  const value = row[key];
+  if (key === 'ev') return L((store.db.events.find(x => x.id === value) || {}).title) || value || '';
+  if (key === 'pid') return L((store.db.shop.find(x => x.id === value) || {}).name) || value || '';
+  if (value && typeof value === 'object') return L(value);
+  return value == null ? '' : value;
+}
+
+function saveBlob(filename, blob) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
-  a.download = `khutwa-checkin-${currentEv || 'all'}.csv`;
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+export function exportTable(kind, format) {
+  const columns = EXPORT_COLUMNS[kind];
+  if (!columns) return;
+  const rows = exportRows(kind);
+  if (!rows.length) {
+    toast(t('empty'));
+    return;
+  }
+  const header = columns.map(k => t(k === 'age' ? 'ci_age' : k) || k);
+  const body = rows.map(r => columns.map(k => exportValue(kind, k, r)));
+  const stamp = kind === 'checkins' ? store.selectedCheckinEvent || 'all' : 'all';
+  if (format === 'xls') {
+    const cell = v => `<td>${E(v)}</td>`;
+    const html =
+      '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table><tr>' +
+      header.map(h => `<th>${E(h)}</th>`).join('') +
+      '</tr>' +
+      body.map(row => '<tr>' + row.map(cell).join('') + '</tr>').join('') +
+      '</table></body></html>';
+    saveBlob(
+      `khutwa-${kind}-${stamp}.xls`,
+      new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    );
+    return;
+  }
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const txt = '\ufeff' + [header, ...body].map(row => row.map(q).join(',')).join('\r\n');
+  saveBlob(`khutwa-${kind}-${stamp}.csv`, new Blob([txt], { type: 'text/csv;charset=utf-8' }));
+}
+
+export function exportCheckinsCSV() {
+  exportTable('checkins', 'csv');
 }
 
 export function exportJoinsCSV() {
-  const rows = store.db.joins || [];
-  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const txt =
-    '\ufeff' +
-    [
-      ['name', 'phone', 'email', 'level', 'reason', 'status', 'date'],
-      ...rows.map(r => [r.name, r.phone, r.email || '', r.level || '', r.reason || '', r.status || '', r.date || ''])
-    ]
-      .map(row => row.map(q).join(','))
-      .join('\r\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'khutwa-joins.csv';
-  a.click();
+  exportTable('joins', 'csv');
 }
 
-export function printCheckinPoster() {
+function loadQrLibrary() {
+  if (window.QRCode) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-khutwa-qr]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('qr')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.dataset.khutwaQr = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('qr'));
+    document.head.appendChild(script);
+  });
+}
+
+export async function printCheckinPoster() {
   const u = location.href.split('#')[0] + '#checkin';
   const p = $('#pp');
+  if (!p) return;
   p.innerHTML = `<div class="lgo huge"></div><h1>${t('ci_h')}</h1><p>${t(
     'poster_p'
   )}</p><div class="qb" id="qr"></div><p class="u">${E(
     u
   )}</p><p>KHUTWA TEAM · ${t('tag')}</p>`;
-  if (window.QRCode) {
-    new window.QRCode($('#qr'), {
+  try {
+    await loadQrLibrary();
+  } catch (e) {
+    console.warn('QR library failed to load:', e);
+  }
+  const slot = $('#qr');
+  if (window.QRCode && slot) {
+    slot.innerHTML = '';
+    new window.QRCode(slot, {
       text: u,
-      width: 340,
-      height: 340,
+      width: 280,
+      height: 280,
       correctLevel: window.QRCode.CorrectLevel.M
     });
-  } else {
-    $('#qr').textContent = 'QR library not loaded';
+  } else if (slot) {
+    slot.textContent = u;
   }
   setTimeout(() => window.print(), 400);
 }
