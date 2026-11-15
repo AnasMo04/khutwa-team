@@ -52,11 +52,9 @@ let preserveSearch = false;
 let lastSearchRoute = '';
 let liveRefreshQueued = false;
 
-// Track in-flight check-in requests to prevent concurrent rapid double-submissions
 const activeCheckinSubmissions = new Set();
-// Track submission timestamps per (event + phone) to enforce client-side cool-down
 const checkinCooldowns = new Map();
-const CHECKIN_COOLDOWN_MS = 5000; // 5-second cooldown between attempts for the same phone/event
+const CHECKIN_COOLDOWN_MS = 5000;
 
 function navigate(dest) {
   currentRoute = dest;
@@ -253,7 +251,6 @@ function renderInner() {
 
   const curNav = routeKey === 'event' ? 'events' : routeKey;
 
-  // Header navigation
   $('#hd').innerHTML = `<header><div class="w nav">${A(
     'home',
     '<span class="lgo" role="img" aria-label="KHUTWA"></span><b>TEAM</b>',
@@ -276,7 +273,6 @@ function renderInner() {
     isDark() ? 'tl' : 'td'
   )}</button>${A('join', t('join'), 'btn p s')}</nav></div></header>`;
 
-  // Main view rendering
   if (routeKey === 'admin') {
     $('#app').innerHTML = renderAdminView(routeParam, navigate);
   } else if (views[routeKey]) {
@@ -285,7 +281,6 @@ function renderInner() {
     $('#app').innerHTML = views.home();
   }
 
-  // Footer
   $('#ft').innerHTML = `<footer>${SH()}<div class="w"><p class="logo"><span class="lgo big" role="img" aria-label="KHUTWA TEAM"></span></p><p>${t(
     'tag'
   )}</p><p>${[
@@ -313,7 +308,6 @@ function renderInner() {
     store.isAdmin || IS_LIVE ? A('admin', t(IS_LIVE ? 'admin_live' : 'admin')) : ''
   }</p></div></footer>`;
 
-  // Dialog default labels
   $('#sv').textContent = t('save');
   $('#c1').textContent = $('#c2').textContent = t('close');
   $('#yb').textContent = t('yes');
@@ -324,7 +318,6 @@ function renderInner() {
   applySearchFilter();
 }
 
-// Global click event handler
 document.addEventListener('click', async x => {
   const btn = x.target.closest('[data-go],[data-a]');
   if (!btn) return;
@@ -457,7 +450,6 @@ document.addEventListener('click', async x => {
   }
 });
 
-// Input filters & pace calculator
 document.addEventListener('input', x => {
   if (x.target.id === 'q') applySearchFilter();
   if (x.target.closest && x.target.closest('#pc')) calculatePace();
@@ -467,7 +459,6 @@ document.addEventListener('search', x => {
   if (x.target.id === 'q') applySearchFilter();
 });
 
-// Dropdowns change handler
 document.addEventListener('change', async x => {
   const e = x.target;
   if (e.id === 'fs') applySearchFilter();
@@ -524,7 +515,6 @@ document.addEventListener('change', async x => {
   }
 });
 
-// Form Submissions (Login, Check-in, Event Admin, Registrations, Join, Shop)
 document.addEventListener('submit', async x => {
   const form = x.target;
   const formKind = form.dataset.f;
@@ -532,7 +522,6 @@ document.addEventListener('submit', async x => {
   x.preventDefault();
   const data = Object.fromEntries(new FormData(form));
 
-  // 1. Admin Edit Item Form
   if (formKind === 'adm') {
     const c = form.dataset.c;
     const id = form.dataset.i;
@@ -586,7 +575,6 @@ document.addEventListener('submit', async x => {
     return;
   }
 
-  // 2. Admin Login Form (Real Supabase Auth signInWithPassword)
   if (formKind === 'login') {
     const lm = form.querySelector('#lm');
     lm.textContent = '';
@@ -614,7 +602,6 @@ document.addEventListener('submit', async x => {
     return;
   }
 
-  // 3. Check-in (QR attendance scanning)
   if (formKind === 'ci') {
     const msg = form.querySelector('#msg');
     const say = (msgKey, cls) => {
@@ -626,7 +613,7 @@ document.addEventListener('submit', async x => {
     const age = Math.floor(+data.age);
     const checkinConfig = store.db.set.checkin || {};
 
-    if (data.hp) return; // honeypot
+    if (data.hp) return;
     if (!checkinConfig.open || !checkinConfig.ev) return say('ci_closed', 'err');
     if (nm.length < 3) return say('e_name3', 'err');
     if (!/^\d{7,15}$/.test(ph)) return say('e_req', 'err');
@@ -636,19 +623,16 @@ document.addEventListener('submit', async x => {
     const evId = checkinConfig.ev;
     const lockKey = `${evId}_${ph}`;
 
-    // 1. In-flight debounce check: prevent rapid duplicate concurrent clicks/requests
     if (activeCheckinSubmissions.has(lockKey)) {
       return say('ci_wait', 'err');
     }
 
-    // 2. Cool-down check: prevent spamming multiple times within short window
     const now = Date.now();
     const lastAttempt = checkinCooldowns.get(lockKey) || 0;
     if (now - lastAttempt < CHECKIN_COOLDOWN_MS) {
       return say('ci_wait', 'err');
     }
 
-    // 3. Local duplicate check: if phone is already recorded in memory for this event
     if (store.db.checkins.some(r => r.ev === evId && r.phone === ph)) {
       displayCheckinSuccess(form, { ev: evId, name: nm.join(' '), phone: ph }, 'ci_dup');
       return;
@@ -674,7 +658,6 @@ document.addEventListener('submit', async x => {
     try {
       if (IS_LIVE) {
         const sb = getSupabase();
-        // Supabase unique constraint (ev, phone) prevents duplicate records (error code 23505)
         const { error } = await sb.from('checkins').insert(record);
         if (error) {
           if (error.code === '23505') {
@@ -683,7 +666,6 @@ document.addEventListener('submit', async x => {
           }
           throw error;
         }
-        // Cache successful check-in in local store if active
         if (!store.db.checkins.some(r => r.ev === record.ev && r.phone === ph)) {
           store.db.checkins.push({ ...record, date: new Date().toISOString() });
         }
@@ -704,7 +686,6 @@ document.addEventListener('submit', async x => {
     return;
   }
 
-  // 4. Site Settings Form
   if (formKind === 'set') {
     Object.assign(store.db.set, {
       ig: data.ig,
@@ -723,7 +704,6 @@ document.addEventListener('submit', async x => {
     return;
   }
 
-  // 5. Visitor Registration, Join Team, or Shop Order
   const msgEl = form.querySelector('#msg');
   const submitBtn = form.querySelector('.btn.p');
   const ph = normPhone(data.phone);
@@ -744,7 +724,6 @@ document.addEventListener('submit', async x => {
     return say('e_req', 'err');
   }
 
-  // Prevent local duplicates
   if (formKind === 'reg' && store.db.regs.some(r => r.ev === data.ev && r.phone === ph)) {
     return say('e_dup', 'err');
   }
@@ -858,7 +837,6 @@ function displayCheckinSuccess(form, record, msgKey) {
   }`;
 }
 
-// Background shape motion
 try {
   if (
     !window.matchMedia ||
@@ -881,7 +859,6 @@ try {
   }
 } catch (e) {}
 
-// Hash change router listener
 window.addEventListener('hashchange', () => {
   const hash = (location.hash || '#home').slice(1);
   if (hash !== currentRoute) {
@@ -907,7 +884,6 @@ document.addEventListener('focusout', () => {
   }
 });
 
-// App Bootstrap
 export async function bootstrap() {
   initLang();
   currentRoute = (location.hash || '#home').slice(1);

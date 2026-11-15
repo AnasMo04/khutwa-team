@@ -490,7 +490,7 @@ export function renderCheckinPanel() {
 export function exportCheckinsCSV() {
   const currentEv = store.selectedCheckinEvent;
   const rows = store.db.checkins.filter(r => r.ev === currentEv);
-  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const txt =
     '\ufeff' +
     [['name', 'phone', 'age', 'time'], ...rows.map(r => [r.name, r.phone, r.age, r.date || ''])]
@@ -499,6 +499,23 @@ export function exportCheckinsCSV() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
   a.download = `khutwa-checkin-${currentEv || 'all'}.csv`;
+  a.click();
+}
+
+export function exportJoinsCSV() {
+  const rows = store.db.joins || [];
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const txt =
+    '\ufeff' +
+    [
+      ['name', 'phone', 'email', 'level', 'reason', 'status', 'date'],
+      ...rows.map(r => [r.name, r.phone, r.email || '', r.level || '', r.reason || '', r.status || '', r.date || ''])
+    ]
+      .map(row => row.map(q).join(','))
+      .join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'khutwa-joins.csv';
   a.click();
 }
 
