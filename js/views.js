@@ -20,8 +20,10 @@ import {
   tile,
   IG,
   WA,
-  gb
+  gb,
+  searchBar
 } from './components.js';
+import { recordBlob } from './search.js';
 
 export const views = {
   home: () =>
@@ -116,7 +118,7 @@ export const views = {
   events: () =>
     sc(
       t('events'),
-      `<h3>${t('upc')}</h3><div class="grid">${store.db.events
+      `${searchBar()}<h3>${t('upc')}</h3><div class="grid">${store.db.events
         .filter(isUpcoming)
         .sort((a, b) => (a.when < b.when ? -1 : 1))
         .map(evCard)
@@ -124,7 +126,9 @@ export const views = {
         .filter(v => !isUpcoming(v))
         .sort((a, b) => (a.when < b.when ? 1 : -1))
         .map(evCard)
-        .join('') || t('empty')}</div>`,
+        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
+        'empty'
+      )}</p></div>`,
       t('samp'),
       's1'
     ),
@@ -200,11 +204,11 @@ export const views = {
   community: () =>
     sc(
       t('community'),
-      `<div class="grid">${store.db.members
+      `${searchBar()}<div class="grid">${store.db.members
         .filter(m => m.pub)
         .map(
           m =>
-            `<article class="card"><div class="av"${
+            `<article class="card" data-q="${E(recordBlob(m))}"><div class="av"${
               gb(m.photo)
                 ? ` style="background-image:${gb(
                     m.photo
@@ -222,7 +226,9 @@ export const views = {
     ) +
     sc(
       t('gal'),
-      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').map(tile).join('') || t('empty')}</div>`,
+      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').map(tile).join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
+        'empty'
+      )}</p></div>`,
       0,
       'dk s6'
     ),
@@ -230,7 +236,9 @@ export const views = {
   ach: () =>
     sc(
       t('ach'),
-      `<div class="grid">${store.db.ach.map(achCard).join('') || t('empty')}</div>`,
+      `${searchBar()}<div class="grid">${store.db.ach.map(achCard).join('') || t(
+        'empty'
+      )}</div><div id="em" class="card" hidden><p>${t('empty')}</p></div>`,
       t('ach_p'),
       's5'
     ),
@@ -238,10 +246,10 @@ export const views = {
   routes: () =>
     sc(
       t('routes'),
-      `<div class="grid">${store.db.routes
+      `${searchBar()}<div class="grid">${store.db.routes
         .map(
           r =>
-            `<article class="card"><span class="tag">${t(
+            `<article class="card" data-q="${E(recordBlob(r))}"><span class="tag">${t(
               r.level
             )}</span><span class="tag g">${t('sample')}</span><h3>${E(
               L(r.name)
@@ -253,7 +261,9 @@ export const views = {
               'mapbtn'
             )}</a></article>`
         )
-        .join('') || t('empty')}</div>`,
+        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
+        'empty'
+      )}</p></div>`,
       t('routes_p'),
       's4'
     ),
@@ -270,9 +280,11 @@ export const views = {
         )
         .join(
           ''
-        )}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${store.db.shop
+        )}</div>${searchBar()}<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${store.db.shop
         .map(p => prod(p, IS_LIVE))
-        .join('') || t('empty')}</div>`,
+        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
+        'empty'
+      )}</p></div>`,
       t('shop_p'),
       's1'
     ),

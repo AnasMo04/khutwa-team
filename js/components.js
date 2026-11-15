@@ -1,5 +1,6 @@
 import { store } from './data.js';
 import { t, E, L, fmt, U } from './utils.js';
+import { recordBlob, savedQuery } from './search.js';
 
 export const gi = g => (g && g.url ? `url('${E(g.url)}')` : g && g.i ? `var(--i${g.i})` : '');
 export const gb = id => {
@@ -7,7 +8,16 @@ export const gb = id => {
   return g ? gi(g) : '';
 };
 export const tile = g =>
-  `<div class="ph im" style="background-image:${gi(g)}" role="img" aria-label="${E(L(g.cap) || t('photo'))}"></div>`;
+  `<div class="ph im" data-q="${E(recordBlob(g))}" style="background-image:${gi(g)}" role="img" aria-label="${E(L(g.cap) || t('photo'))}"></div>`;
+
+export const searchBar = (people = false) =>
+  `<div class="bar pubq"><input id="q" type="search" placeholder="${t(
+    people ? 'search_people' : 'search'
+  )}" aria-label="${t(
+    'search'
+  )}" autocomplete="off" enterkeyhint="search" value="${E(
+    savedQuery.q
+  )}"></div>`;
 
 export const IG = () => store.db.set.ig || 'https://www.instagram.com/';
 export const WA = () => 'https://wa.me/' + (store.db.set.wa || '').replace(/\D/g, '');
@@ -68,7 +78,7 @@ export const isUpcoming = v =>
   v.status !== 'completed' && new Date(v.when) > new Date();
 
 export const evCard = v =>
-  `<article class="card">${
+  `<article class="card" data-q="${E(recordBlob(v))}">${
     gb(v.img) ? `<div class="cov" style="background-image:${gb(v.img)}"></div>` : ''
   }<span class="tag">${t(v.type)}</span><span class="tag g">${t(v.status)}</span>${
     v.beginner ? `<span class="tag g">${t('beginner')}</span>` : ''
@@ -77,7 +87,7 @@ export const evCard = v =>
   )}</p><p>${E(L(v.desc))}</p>${A('event-' + v.id, t('details'), 'btn s')}</article>`;
 
 export const achCard = a =>
-  `<article class="card"><span class="tag">${t(a.cat)}</span><h3>${E(
+  `<article class="card" data-q="${E(recordBlob(a))}"><span class="tag">${t(a.cat)}</span><h3>${E(
     L(a.title)
   )}</h3><p class="m">${E(a.who)}</p><span class="tag g">${t('sample')}</span></article>`;
 
@@ -118,7 +128,7 @@ export const tee = p => {
 };
 
 export const prod = (p, isLive = false) =>
-  `<article class="card">${tee(p)}<h3>${E(L(p.name))}</h3><p><b>${
+  `<article class="card" data-q="${E(recordBlob(p))}">${tee(p)}<h3>${E(L(p.name))}</h3><p><b>${
     p.price ? p.price + ' ' + t('lyd') : t('price_tba')
   }</b></p><p>${E(L(p.desc))}</p>${
     p.status === 'avail'

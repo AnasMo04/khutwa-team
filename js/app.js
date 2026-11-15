@@ -36,16 +36,21 @@ import { views } from './views.js';
 import {
   renderAdminView,
   openEditForm,
-  filterTableRows,
   exportCheckinsCSV,
+  exportJoinsCSV,
   printCheckinPoster,
   uploadGalleryImages,
   uploadImageFile,
   ADMIN_CONFIG
 } from './admin.js';
+import { applySearchFilter, resetSavedQuery } from './search.js';
+import { startLiveUpdates, stopLiveUpdates } from './realtime.js';
 
 let currentRoute = (location.hash || '#home').slice(1);
 let pendingAction = null;
+let preserveSearch = false;
+let lastSearchRoute = '';
+let liveRefreshQueued = false;
 
 function navigate(dest) {
   currentRoute = dest;
@@ -58,7 +63,11 @@ function navigate(dest) {
   if (store.isAdmin && currentRoute.startsWith('admin')) {
     store.loadPeopleFromSupabase().then(() => {
       store.takeSnapshot();
-      if (currentRoute.startsWith('admin')) render();
+      if (currentRoute.startsWith('admin')) {
+        preserveSearch = true;
+        render();
+        preserveSearch = false;
+      }
     }).catch(console.warn);
   }
 }
@@ -120,36 +129,114 @@ function calculatePace() {
     .join('')}</div><p class="m">${t('pc_n')}</p>`;
 }
 
+function reveal(el) {
+  if (!el || !el.classList.contains('rv')) return;
+  el.classList.add('in');
+  setTimeout(() => {
+    el.classList.remove('rv', 'in');
+    el.style.transitionDelay = '';
+  }, 1000);
+}
+
 function revealElements() {
-  if (
-    typeof IntersectionObserver === 'undefined' ||
-    window.matchMedia('(prefers-reduced-motion:reduce)').matches
-  )
+  try {
+    const reduceMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    const isMobile =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(max-width:860px)').matches;
+    if (
+      reduceMotion ||
+      isMobile ||
+      typeof IntersectionObserver === 'undefined'
+    )
+      return;
+
+    const els = [
+      ...document.querySelectorAll('#app .sec h2, #app .card, #app .ph')
+    ];
+    if (!els.length) return;
+
+    const io = new IntersectionObserver(
+      entries => {
+        entries.forEach(x => {
+          if (x.isIntersecting || x.intersectionRatio > 0) {
+            io.unobserve(x.target);
+            reveal(x.target);
+          }
+        });
+      },
+      { threshold: 0.01, rootMargin: '80px' }
+    );
+
+    els.forEach((e, i) => {
+      e.classList.add('rv');
+      e.style.transitionDelay = (i % 4) * 90 + 'ms';
+      io.observe(e);
+    });
+
+    setTimeout(() => {
+      els.forEach(e => reveal(e));
+      try {
+        io.disconnect();
+      } catch (err) {}
+    }, 1200);
+  } catch (e) {
+    document.querySelectorAll('.rv').forEach(el => {
+      el.classList.remove('rv', 'in');
+      el.style.opacity = '';
+      el.style.transform = '';
+    });
+  }
+}
+
+function showRenderError() {
+  const app = $('#app');
+  if (!app) return;
+  app.innerHTML = `<section class="sec"><div class="w"><p>${t(
+    'e_net'
+  )}</p><p><button class="btn p" type="button" data-a="bootretry">${t(
+    'retry'
+  )}</button></p></div></section>`;
+}
+
+function shouldSkipLiveRender() {
+  if ($('#dlg')?.open || $('#cd')?.open) return true;
+  const ae = document.activeElement;
+  if (!ae || ae === document.body) return false;
+  const tag = (ae.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+function onLiveData() {
+  if (!store.isAdmin) return;
+  if (!String(currentRoute).startsWith('admin')) return;
+  if (shouldSkipLiveRender()) {
+    liveRefreshQueued = true;
     return;
-  const io = new IntersectionObserver(
-    entries => {
-      entries.forEach(x => {
-        if (x.isIntersecting) {
-          const el = x.target;
-          io.unobserve(el);
-          el.classList.add('in');
-          setTimeout(() => {
-            el.classList.remove('rv', 'in');
-            el.style.transitionDelay = '';
-          }, 1000);
-        }
-      });
-    },
-    { threshold: 0.1 }
-  );
-  document.querySelectorAll('#app .sec h2, #app .card, #app .ph').forEach((e, i) => {
-    e.classList.add('rv');
-    e.style.transitionDelay = (i % 4) * 90 + 'ms';
-    io.observe(e);
-  });
+  }
+  preserveSearch = true;
+  render();
+  preserveSearch = false;
 }
 
 function render() {
+  try {
+    if (!preserveSearch && currentRoute !== lastSearchRoute) {
+      resetSavedQuery();
+    }
+    lastSearchRoute = currentRoute;
+    renderInner();
+  } catch (e) {
+    console.error('Render error:', e);
+    try {
+      showRenderError();
+    } catch (e2) {}
+  }
+}
+
+function renderInner() {
   const parts = currentRoute.split(/-(.+)/);
   const routeKey = parts[0];
   const routeParam = parts[1];
@@ -228,6 +315,7 @@ function render() {
   if ($('#pc')) calculatePace();
   tickCountdown();
   revealElements();
+  applySearchFilter();
 }
 
 // Global click event handler
@@ -321,6 +409,7 @@ document.addEventListener('click', async x => {
       toast(t('e_net'));
     }
   } else if (d.a === 'logout') {
+    stopLiveUpdates();
     await signOut();
     store.isAdmin = false;
     store.db.regs = [];
@@ -338,6 +427,10 @@ document.addEventListener('click', async x => {
     }
   } else if (d.a === 'csv') {
     exportCheckinsCSV();
+  } else if (d.a === 'xlsx') {
+    exportJoinsCSV();
+  } else if (d.a === 'bootretry') {
+    location.reload();
   } else if (d.a === 'poster') {
     printCheckinPoster();
   } else if (d.a === 'reset') {
@@ -350,14 +443,18 @@ document.addEventListener('click', async x => {
 
 // Input filters & pace calculator
 document.addEventListener('input', x => {
-  if (x.target.id === 'q') filterTableRows();
+  if (x.target.id === 'q') applySearchFilter();
   if (x.target.closest && x.target.closest('#pc')) calculatePace();
+});
+
+document.addEventListener('search', x => {
+  if (x.target.id === 'q') applySearchFilter();
 });
 
 // Dropdowns change handler
 document.addEventListener('change', async x => {
   const e = x.target;
-  if (e.id === 'fs') filterTableRows();
+  if (e.id === 'fs') applySearchFilter();
   if (e.id === 'cis') {
     store.selectedCheckinEvent = e.value;
     render();
@@ -486,6 +583,7 @@ document.addEventListener('submit', async x => {
 
       store.isAdmin = true;
       await store.loadFromSupabase();
+      startLiveUpdates(onLiveData);
       render();
     } catch (err) {
       console.error('Login error:', err);
@@ -709,22 +807,27 @@ function displayCheckinSuccess(form, record, msgKey) {
 }
 
 // Background shape motion
-if (!window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
-  let rf;
-  document.addEventListener('pointermove', e => {
-    if (rf) return;
-    rf = requestAnimationFrame(() => {
-      rf = 0;
-      const x = e.clientX / window.innerWidth - 0.5;
-      const y = e.clientY / window.innerHeight - 0.5;
-      document.querySelectorAll('.shp b').forEach(b => {
-        const d = +b.dataset.d;
-        b.style.translate = `${x * d}px ${y * d}px`;
-        b.style.rotate = `${x * d}deg`;
+try {
+  if (
+    !window.matchMedia ||
+    !window.matchMedia('(prefers-reduced-motion:reduce)').matches
+  ) {
+    let rf;
+    document.addEventListener('pointermove', e => {
+      if (rf) return;
+      rf = requestAnimationFrame(() => {
+        rf = 0;
+        const x = e.clientX / window.innerWidth - 0.5;
+        const y = e.clientY / window.innerHeight - 0.5;
+        document.querySelectorAll('.shp b').forEach(b => {
+          const d = +b.dataset.d;
+          b.style.translate = `${x * d}px ${y * d}px`;
+          b.style.rotate = `${x * d}deg`;
+        });
       });
     });
-  });
-}
+  }
+} catch (e) {}
 
 // Hash change router listener
 window.addEventListener('hashchange', () => {
@@ -733,6 +836,22 @@ window.addEventListener('hashchange', () => {
     currentRoute = hash;
     render();
     window.scrollTo(0, 0);
+  }
+});
+
+window.addEventListener('error', e => {
+  console.error('App error:', e.error || e.message);
+});
+window.addEventListener('unhandledrejection', e => {
+  console.error('App promise error:', e.reason);
+});
+
+document.addEventListener('focusout', () => {
+  if (liveRefreshQueued && store.isAdmin && String(currentRoute).startsWith('admin')) {
+    liveRefreshQueued = false;
+    preserveSearch = true;
+    render();
+    preserveSearch = false;
   }
 });
 
@@ -746,17 +865,18 @@ export async function bootstrap() {
   if (IS_LIVE) {
     $('#app').innerHTML = '<p class="w" style="padding:60px 20px">…</p>';
     try {
-      // Check existing session
       store.isAdmin = await verifyOrganizerPrivileges();
       await store.loadFromSupabase();
     } catch (e) {
       console.error('Live boot error:', e);
+      try {
+        store.loadDemo();
+      } catch (e2) {}
       render();
-      $('#app').innerHTML = `<section class="sec"><div class="w"><p>${t(
-        'e_net'
-      )}</p></div></section>`;
+      toast(t('e_net'));
       return;
     }
+    if (store.isAdmin) startLiveUpdates(onLiveData);
     render();
   } else {
     store.loadDemo();
