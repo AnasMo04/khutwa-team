@@ -3,6 +3,7 @@ import { IS_LIVE } from './supabase.js';
 import { t, E, L, fmt, U } from './utils.js';
 import {
   A,
+  backBtn,
   sc,
   SH,
   MQ,
@@ -20,10 +21,8 @@ import {
   tile,
   IG,
   WA,
-  gb,
-  searchBar
+  gb
 } from './components.js';
-import { recordBlob } from './search.js';
 
 export const views = {
   home: () =>
@@ -118,7 +117,7 @@ export const views = {
   events: () =>
     sc(
       t('events'),
-      `${searchBar()}<h3>${t('upc')}</h3><div class="grid">${store.db.events
+      `<h3>${t('upc')}</h3><div class="grid">${store.db.events
         .filter(isUpcoming)
         .sort((a, b) => (a.when < b.when ? -1 : 1))
         .map(evCard)
@@ -126,9 +125,7 @@ export const views = {
         .filter(v => !isUpcoming(v))
         .sort((a, b) => (a.when < b.when ? 1 : -1))
         .map(evCard)
-        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
-        'empty'
-      )}</p></div>`,
+        .join('') || t('empty')}</div>`,
       t('samp'),
       's1'
     ),
@@ -138,7 +135,7 @@ export const views = {
     if (!v) {
       return sc(
         t('events'),
-        t('empty') + '<br>' + A('events', t('back'), 'btn s')
+        backBtn('events', 'back_events') + '<br>' + t('empty')
       );
     }
     const o = store.db.events.filter(
@@ -146,7 +143,7 @@ export const views = {
     );
     return sc(
       E(L(v.title)),
-      `<p><span class="tag">${t(v.type)}</span><span class="tag g">${t(
+      `${backBtn('events', 'back_events')}<p><span class="tag">${t(v.type)}</span><span class="tag g">${t(
         v.status
       )}</span>${v.beginner ? `<span class="tag g">${t('beginner')}</span>` : ''}</p><p>${fmt(
         v.when
@@ -154,31 +151,19 @@ export const views = {
         'point'
       )}:</b> ${E(L(v.point))} · <a href="${U(
         v.map
-      )}" target="_blank" rel="noopener">${t('mapbtn')}</a></p><p>${A(
-        'events',
-        t('back'),
-        'btn s'
-      )} <a class="btn s" href="${E(
+      )}" target="_blank" rel="noopener">${t('mapbtn')}</a></p><p><a class="btn s" href="${E(
         gcal(v)
       )}" target="_blank" rel="noopener">${t('cal')}</a> <a class="btn s" href="${E(
         waLink(v)
       )}" target="_blank" rel="noopener">${t('share')}</a></p><div class="card">${
         v.status === 'open'
-          ? `<form data-f="reg" novalidate><h3>${t('reg_h')}</h3><label for="ev">${t(
-              'ev'
-            )}</label><select id="ev" name="ev">${o
-              .map(
-                x =>
-                  `<option value="${x.id}"${x.id === id ? ' selected' : ''}>${E(
-                    L(x.title)
-                  )} · ${fmt(x.when)}</option>`
-              )
-              .join('')}</select>${inp('name', 'fname', 1)}${inp(
-              'phone',
-              'phone',
-              1,
-              'tel'
-            )}${inp('email', 'email', 0, 'email')}<label for="note">${t(
+          ? `<form data-f="reg" novalidate><h3>${t('reg_h')}</h3><input type="hidden" id="ev" name="ev" value="${E(
+              v.id
+            )}"><p class="m"><b>${t('ev')}:</b> ${E(L(v.title))} (${fmt(v.when)})</p>${inp(
+              'name',
+              'fname',
+              1
+            )}${inp('phone', 'phone', 1, 'tel')}${inp('email', 'email', 0, 'email')}<label for="note">${t(
               'note'
             )}</label><textarea id="note" name="note" maxlength="200" rows="2"></textarea>${tail(
               'submit',
@@ -192,7 +177,7 @@ export const views = {
   tools: () =>
     sc(
       t('pc_t'),
-      `<div class="card" id="pc"><div class="grid"><label>${t(
+      `${backBtn('home', 'back')}<div class="card" id="pc"><div class="grid"><label>${t(
         'km'
       )}<input id="pd" type="number" min="0" step="any" value="5" inputmode="decimal"></label><label>${t(
         'tm'
@@ -204,11 +189,11 @@ export const views = {
   community: () =>
     sc(
       t('community'),
-      `${searchBar()}<div class="grid">${store.db.members
+      `<div class="grid">${store.db.members
         .filter(m => m.pub)
         .map(
           m =>
-            `<article class="card" data-q="${E(recordBlob(m))}"><div class="av"${
+            `<article class="card"><div class="av"${
               gb(m.photo)
                 ? ` style="background-image:${gb(
                     m.photo
@@ -226,9 +211,7 @@ export const views = {
     ) +
     sc(
       t('gal'),
-      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').map(tile).join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
-        'empty'
-      )}</p></div>`,
+      `<div class="grid">${store.db.gal.filter(g => !g.scope || g.scope === 'general').map(tile).join('') || t('empty')}</div>`,
       0,
       'dk s6'
     ),
@@ -236,9 +219,7 @@ export const views = {
   ach: () =>
     sc(
       t('ach'),
-      `${searchBar()}<div class="grid">${store.db.ach.map(achCard).join('') || t(
-        'empty'
-      )}</div><div id="em" class="card" hidden><p>${t('empty')}</p></div>`,
+      `<div class="grid">${store.db.ach.map(achCard).join('') || t('empty')}</div>`,
       t('ach_p'),
       's5'
     ),
@@ -246,24 +227,24 @@ export const views = {
   routes: () =>
     sc(
       t('routes'),
-      `${searchBar()}<div class="grid">${store.db.routes
+      `<div class="grid routes-grid">${store.db.routes
         .map(
-          r =>
-            `<article class="card" data-q="${E(recordBlob(r))}"><span class="tag">${t(
-              r.level
-            )}</span><span class="tag g">${t('sample')}</span><h3>${E(
+          r => {
+            const levelTag = r.level ? `<span class="tag">${t(r.level)}</span>` : '';
+            const kmText = r.km != null && r.km !== '' ? `${r.km} ${t('kmu')}` : '';
+            const fromText = L(r.from);
+            const metaParts = [kmText, fromText ? `${t('from')}: ${E(fromText)}` : ''].filter(Boolean).join(' · ');
+            const safetyText = L(r.safety);
+            const mapLink = r.map ? `<div class="card-act"><a class="btn s" href="${U(r.map)}" target="_blank" rel="noopener">${t('mapbtn')}</a></div>` : '';
+
+            return `<article class="card route-card">${levelTag}<h3>${E(
               L(r.name)
-            )}</h3><p class="m">${r.km} ${t('kmu')} · ${t('from')}: ${E(
-              L(r.from)
-            )}</p><p><b>${t('safety')}:</b> ${E(
-              L(r.safety)
-            )}</p><a href="${U(r.map)}" target="_blank" rel="noopener">${t(
-              'mapbtn'
-            )}</a></article>`
+            )}</h3>${metaParts ? `<p class="m">${metaParts}</p>` : ''}${
+              safetyText ? `<p class="route-safety"><b>${t('safety')}:</b> ${E(safetyText)}</p>` : ''
+            }${mapLink}</article>`;
+          }
         )
-        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
-        'empty'
-      )}</p></div>`,
+        .join('') || t('empty')}</div>`,
       t('routes_p'),
       's4'
     ),
@@ -271,7 +252,7 @@ export const views = {
   shop: () =>
     sc(
       t('shop_h'),
-      `<div class="steps">${[1, 2, 3, 4]
+      `${backBtn('home', 'back')}<div class="steps">${[1, 2, 3, 4]
         .map(
           n =>
             `<div><b class="n">${n}</b><h4>${t('sh' + n)}</h4><p class="m">${t(
@@ -280,11 +261,9 @@ export const views = {
         )
         .join(
           ''
-        )}</div>${searchBar()}<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${store.db.shop
+        )}</div><div class="store-grid">${store.db.shop
         .map(p => prod(p, IS_LIVE))
-        .join('') || t('empty')}</div><div id="em" class="card" hidden><p>${t(
-        'empty'
-      )}</p></div>`,
+        .join('') || t('empty')}</div>`,
       t('shop_p'),
       's1'
     ),
@@ -294,7 +273,8 @@ export const views = {
     const v = store.db.events.find(x => x.id === c.ev);
     return sc(
       t('ci_h'),
-      c.open && v
+      backBtn('home', 'back') +
+      (c.open && v
         ? `<div class="card"><p><b>${E(L(v.title))}</b><br><span class="m">${fmt(
             v.when
           )}</span></p><form data-f="ci" novalidate>${inp(
@@ -308,7 +288,7 @@ export const views = {
           )}</label><p class="m">${t('priv')}</p>${
             IS_LIVE ? '' : `<p class="m">${t('demo_note')}</p>`
           }<button class="btn p">${t('ci_btn')}</button><div id="msg" role="status" aria-live="polite"></div></form></div>`
-        : `<p>${t('ci_closed')}</p>`,
+        : `<p>${t('ci_closed')}</p>`),
       0,
       's1'
     );
@@ -317,7 +297,7 @@ export const views = {
   join: () =>
     sc(
       t('join_h'),
-      `<form class="card" data-f="join" novalidate>${inp(
+      `${backBtn('home', 'back')}<form class="card" data-f="join" novalidate>${inp(
         'name',
         'fname',
         1

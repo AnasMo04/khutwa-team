@@ -52,6 +52,12 @@ let preserveSearch = false;
 let lastSearchRoute = '';
 let liveRefreshQueued = false;
 
+// Track in-flight check-in requests to prevent concurrent rapid double-submissions
+const activeCheckinSubmissions = new Set();
+// Track submission timestamps per (event + phone) to enforce client-side cool-down
+const checkinCooldowns = new Map();
+const CHECKIN_COOLDOWN_MS = 5000; // 5-second cooldown between attempts for the same phone/event
+
 function navigate(dest) {
   currentRoute = dest;
   try {
@@ -332,6 +338,16 @@ document.addEventListener('click', async x => {
   const c = d.c;
   const i = d.i;
 
+  if (d.a === 'back') {
+    x.preventDefault();
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate(d.backTo || 'home');
+    }
+    return;
+  }
+
   if (d.a === 'lang') {
     const nextLang = getLang() === 'ar' ? 'en' : 'ar';
     setLang(nextLang);
@@ -524,22 +540,28 @@ document.addEventListener('submit', async x => {
     if (!itemConfig) return;
     const obj = {};
 
-    itemConfig.f.forEach(([fieldKey, type, opt]) => {
+    itemConfig.f.forEach(([fieldKey, type, opt, altName]) => {
+      const formKey = (type === 't' && typeof opt === 'string' && opt) || fieldKey;
+      const targetKey =
+        (typeof altName === 'string' && altName) ||
+        (type === 't' && typeof opt === 'string' && opt) ||
+        fieldKey;
+
       if (type === 'b') {
         obj[fieldKey] = {
           en: data[fieldKey + '__en'] || '',
           ar: data[fieldKey + '__ar'] || ''
         };
       } else if (type === 'c') {
-        obj[fieldKey] = Boolean(data[fieldKey]);
+        obj[fieldKey] = Boolean(data[formKey]);
       } else if (type === 'n') {
-        obj[fieldKey] = +data[fieldKey] || 0;
+        obj[fieldKey] = +data[formKey] || 0;
       } else if (type === 'd') {
         obj[fieldKey] = new Date(
-          new Date(data[fieldKey] + ':00Z').getTime() - 72e5
+          new Date(data[formKey] + ':00Z').getTime() - 72e5
         ).toISOString();
       } else {
-        obj[opt || fieldKey] = data[opt || fieldKey] || '';
+        obj[targetKey] = data[formKey] ?? '';
       }
     });
 
@@ -611,12 +633,38 @@ document.addEventListener('submit', async x => {
     if (!(age >= 1 && age <= 99)) return say('e_age', 'err');
     if (!data.consent) return say('e_cons', 'err');
 
+    const evId = checkinConfig.ev;
+    const lockKey = `${evId}_${ph}`;
+
+    // 1. In-flight debounce check: prevent rapid duplicate concurrent clicks/requests
+    if (activeCheckinSubmissions.has(lockKey)) {
+      return say('ci_wait', 'err');
+    }
+
+    // 2. Cool-down check: prevent spamming multiple times within short window
+    const now = Date.now();
+    const lastAttempt = checkinCooldowns.get(lockKey) || 0;
+    if (now - lastAttempt < CHECKIN_COOLDOWN_MS) {
+      return say('ci_wait', 'err');
+    }
+
+    // 3. Local duplicate check: if phone is already recorded in memory for this event
+    if (store.db.checkins.some(r => r.ev === evId && r.phone === ph)) {
+      displayCheckinSuccess(form, { ev: evId, name: nm.join(' '), phone: ph }, 'ci_dup');
+      return;
+    }
+
     const submitBtn = form.querySelector('.btn.p');
+    const origBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
+    submitBtn.textContent = t('sending');
+
+    activeCheckinSubmissions.add(lockKey);
+    checkinCooldowns.set(lockKey, now);
 
     const record = {
       id: uid(),
-      ev: checkinConfig.ev,
+      ev: evId,
       name: nm.join(' '),
       phone: ph,
       age,
@@ -626,6 +674,7 @@ document.addEventListener('submit', async x => {
     try {
       if (IS_LIVE) {
         const sb = getSupabase();
+        // Supabase unique constraint (ev, phone) prevents duplicate records (error code 23505)
         const { error } = await sb.from('checkins').insert(record);
         if (error) {
           if (error.code === '23505') {
@@ -634,11 +683,11 @@ document.addEventListener('submit', async x => {
           }
           throw error;
         }
-      } else {
-        if (store.db.checkins.some(r => r.ev === record.ev && r.phone === ph)) {
-          displayCheckinSuccess(form, record, 'ci_dup');
-          return;
+        // Cache successful check-in in local store if active
+        if (!store.db.checkins.some(r => r.ev === record.ev && r.phone === ph)) {
+          store.db.checkins.push({ ...record, date: new Date().toISOString() });
         }
+      } else {
         store.db.checkins.push({ ...record, date: new Date().toISOString() });
         await store.syncToSupabase();
       }
@@ -647,7 +696,10 @@ document.addEventListener('submit', async x => {
     } catch (err) {
       console.error('Checkin error:', err);
       submitBtn.disabled = false;
+      submitBtn.textContent = origBtnText;
       say(err.status === 401 || err.status === 403 ? 'ci_closed' : 'e_net', 'err');
+    } finally {
+      activeCheckinSubmissions.delete(lockKey);
     }
     return;
   }
@@ -858,6 +910,7 @@ document.addEventListener('focusout', () => {
 // App Bootstrap
 export async function bootstrap() {
   initLang();
+  currentRoute = (location.hash || '#home').slice(1);
   const theme = localStorage.getItem('khutwa_theme');
   if (theme) document.documentElement.dataset.theme = theme;
   setInterval(tickCountdown, 1000);

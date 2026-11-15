@@ -258,7 +258,18 @@ export class Store {
         if (r.kind === 'set') {
           this.db.set = { ...this.db.set, ...r.data };
         } else if (CONTENT_KINDS.includes(r.kind) && Array.isArray(this.db[r.kind])) {
-          this.db[r.kind].push({ ...r.data, id: r.id });
+          const item = { ...r.data, id: r.id };
+          if (r.kind === 'events') {
+            if (!item.type) item.type = 'run5';
+            if (!item.status) item.status = 'open';
+          } else if (r.kind === 'ach') {
+            delete item['first5k,pb,consist,part,monthly'];
+            if (!item.cat) item.cat = 'first5k';
+            if (!item.who) item.who = '';
+          } else if (r.kind === 'routes') {
+            if (!item.level) item.level = 'easy';
+          }
+          this.db[r.kind].push(item);
         }
       });
     }
@@ -275,18 +286,21 @@ export class Store {
     const sb = getSupabase();
     if (!sb || !this.isAdmin) return;
 
-    for (const k of PEOPLE_KINDS) {
-      const tableName = TABLE_MAP[k];
-      const { data, error } = await sb
-        .from(tableName)
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(1000);
+    // Concurrently load people tables in parallel for maximum performance
+    await Promise.all(
+      PEOPLE_KINDS.map(async k => {
+        const tableName = TABLE_MAP[k];
+        const { data, error } = await sb
+          .from(tableName)
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(1000);
 
-      if (!error && Array.isArray(data)) {
-        this.db[k] = data;
-      }
-    }
+        if (!error && Array.isArray(data)) {
+          this.db[k] = data;
+        }
+      })
+    );
   }
 
   async syncToSupabase() {

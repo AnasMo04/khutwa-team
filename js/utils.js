@@ -2,7 +2,7 @@ import { S } from './translations.js';
 
 const mem = {};
 
-export let lang = 'en';
+export let lang = 'ar';
 
 export function getLang() {
   return lang;
@@ -19,9 +19,9 @@ export function setLang(l) {
 
 export function initLang() {
   try {
-    lang = localStorage.getItem('khutwa_lang') || 'en';
+    lang = localStorage.getItem('khutwa_lang') || 'ar';
   } catch (e) {
-    lang = mem['khutwa_lang'] || 'en';
+    lang = mem['khutwa_lang'] || 'ar';
   }
 }
 
@@ -48,7 +48,10 @@ export function ss(k, v) {
 export const $ = s => document.querySelector(s);
 export const $$ = s => [...document.querySelectorAll(s)];
 
-export const t = k => (S[k] || [k, k])[lang === 'ar' ? 1 : 0];
+export const t = k => {
+  if (k == null || k === '') return '';
+  return (S[k] || [k, k])[lang === 'ar' ? 1 : 0];
+};
 
 export const L = o => {
   if (o && typeof o === 'object') {

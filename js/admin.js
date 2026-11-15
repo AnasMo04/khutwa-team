@@ -1,9 +1,8 @@
-import { store } from './data.js';
-import { IS_LIVE, getSupabase } from './supabase.js';
+import { store, CONTENT_KINDS, PEOPLE_KINDS, TABLE_MAP } from './data.js';
+import { IS_LIVE, signIn, signOut, verifyOrganizerPrivileges, getSupabase } from './supabase.js';
 import { S } from './translations.js';
-import { t, E, L, fmt, $ } from './utils.js';
-import { A, sc, isUpcoming } from './components.js';
-import { recordBlob, savedQuery, applySearchFilter } from './search.js';
+import { t, E, L, fmt, U, $, toast, normPhone } from './utils.js';
+import { A, backBtn, sc, isUpcoming } from './components.js';
 
 export const ORDER_STATUSES = ['new', 'contacted', 'confirmed', 'delivered', 'cancelled'];
 export const JOIN_STATUSES = ['pending', 'approved', 'rejected'];
@@ -130,17 +129,14 @@ export function renderAdminView(tab, onNavigate) {
   ).join('')}</aside>`;
 
   const isPeopleTab = ['checkin', 'orders', 'regs', 'joins'].includes(validTab);
-  const bar = `<div class="abar"><div><h2>${t(validTab)}</h2>${
+  const backToOverview = validTab !== 'overview' ? backBtn('admin', 'overview') + ' ' : '';
+  const bar = `<div class="abar"><div>${backToOverview}<h2>${t(validTab)}</h2>${
     validTab !== 'overview'
       ? `<p class="m">${t('d_' + validTab)} <span class="tag g">${t(
           isPeopleTab ? (IS_LIVE ? 'vis_priv' : 'vis_loc') : 'vis_pub'
         )}</span></p>`
       : ''
-  }</div><div class="pb">${
-    IS_LIVE && store.isAdmin
-      ? `<span class="live" title="${t('live')}"><i></i> ${t('live')}</span>`
-      : ''
-  }<button class="btn s" data-a="refresh">${t(
+  }</div><div class="pb"><button class="btn s" data-a="refresh">${t(
     'refresh'
   )}</button> <button class="btn s" data-a="logout">${t('logout')}</button></div></div>`;
 
@@ -279,44 +275,26 @@ export function renderTable(c) {
     : g.f
     ? `<button class="btn p s" data-a="edit" data-c="${c}">${t('add')}</button>`
     : '';
-  const exp =
-    c === 'joins'
-      ? `<button class="btn s" type="button" data-a="xlsx" data-c="joins">${t(
-          'export_excel'
-        )}</button>`
-      : '';
-  const peopleSearch = ['joins', 'regs', 'orders', 'members'].includes(c);
-  const qPh = peopleSearch ? t('search_people') : t('search');
-  const fsVal = savedQuery.fs || '';
 
-  const filter = g.fl
-    ? `<select id="fs" aria-label="${t('status')}"><option value="">${t(
-        'all'
-      )}</option>${(c === 'events'
-        ? ['open', 'cancelled', 'completed']
-        : c === 'orders'
-        ? ORDER_STATUSES
-        : JOIN_STATUSES
-      )
-        .map(
-          s =>
-            `<option value="${s}"${s === fsVal ? ' selected' : ''}>${t(
-              s
-            )}</option>`
-        )
-        .join('')}</select>`
-    : '';
-
-  return `<div class="tools"><input id="q" class="qbox" type="text" role="searchbox" inputmode="search" placeholder="${qPh}" aria-label="${t(
+  return `<div class="bar"><input id="q" placeholder="${t(
     'search'
-  )}" autocomplete="off" enterkeyhint="search" value="${E(
-    savedQuery.q
-  )}"><div class="bar">${filter}${exp}${add}<span id="upm" class="m"></span></div></div><div id="ls">${rows
+  )}" aria-label="${t('search')}">${
+    g.fl
+      ? `<select id="fs" aria-label="${t('status')}"><option value="">${t(
+          'all'
+        )}</option>${(c === 'events'
+          ? ['open', 'cancelled', 'completed']
+          : c === 'orders'
+          ? ORDER_STATUSES
+          : JOIN_STATUSES
+        )
+          .map(s => `<option value="${s}">${t(s)}</option>`)
+          .join('')}</select>`
+      : ''
+  }${add}<span id="upm" class="m"></span></div><div id="ls">${rows
     .map(
       r =>
-        `<div class="li" data-s="${r.status || ''}" data-q="${E(
-          recordBlob(r)
-        )}"><div class="lm"><b>${cell(
+        `<div class="li" data-s="${r.status || ''}"><div class="lm"><b>${cell(
           c,
           g.c[0],
           r
@@ -340,7 +318,28 @@ export function renderTable(c) {
 }
 
 export function filterTableRows() {
-  applySearchFilter();
+  const rawQ = $('#q')?.value || '';
+  const q = rawQ.trim().toLowerCase();
+  const qPhone = normPhone(rawQ);
+  const s = $('#fs') ? $('#fs').value : '';
+  let n = 0;
+
+  const rows = document.querySelectorAll('#ls .li');
+  rows.forEach(r => {
+    let matchesQuery = true;
+    if (q) {
+      const text = (r.textContent || '').toLowerCase();
+      const phoneAttr = r.dataset.phone || '';
+      matchesQuery = text.includes(q) || (qPhone && phoneAttr && phoneAttr.includes(qPhone));
+    }
+    const matchesStatus = !s || r.dataset.s === s;
+    const hide = !(matchesQuery && matchesStatus);
+    r.hidden = hide;
+    if (!hide) n++;
+  });
+
+  const em = $('#em');
+  if (em) em.hidden = n > 0;
 }
 
 export function openEditForm(c, id) {
@@ -470,14 +469,12 @@ export function renderCheckinPanel() {
       ([label, count]) =>
         `<div class="card"><div class="big">${count}</div>${label}</div>`
     )
-    .join('')}</div><div class="tools"><input id="q" class="qbox" type="text" role="searchbox" inputmode="search" placeholder="${t(
-    'search_people'
-  )}" aria-label="${t('search')}" autocomplete="off" enterkeyhint="search" value="${E(
-    savedQuery.q
-  )}"></div><div id="ls">${rows
+    .join('')}</div><div class="bar"><input id="q" placeholder="${t(
+    'search'
+  )}" aria-label="${t('search')}"></div><div id="ls">${rows
     .map(
       r =>
-        `<div class="li" data-q="${E(recordBlob(r))}"><div class="lm"><b>${E(r.name)}</b><div class="lc"><span><em>${t(
+        `<div class="li" data-phone="${E(normPhone(r.phone))}"><div class="lm"><b>${E(r.name)}</b><div class="lc"><span><em>${t(
           'phone'
         )}</em> ${E(r.phone)}</span><span><em>${t('ci_age')}</em> ${
           r.age
@@ -490,49 +487,19 @@ export function renderCheckinPanel() {
   }><p>${t('empty')}</p></div>`;
 }
 
-function csvEscape(v) {
-  return '"' + String(v ?? '').replace(/"/g, '""') + '"';
-}
-
-export function downloadCSV(filename, headers, rows) {
-  const txt =
-    '\ufeff' +
-    [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(a.href);
-    a.remove();
-  }, 400);
-}
-
-export function exportJoinsCSV() {
-  downloadCSV(
-    'khutwa-join-requests.csv',
-    [t('name'), t('phone'), t('email'), t('level'), t('reason'), t('status'), t('date')],
-    (store.db.joins || []).map(r => [
-      r.name || '',
-      r.phone || '',
-      r.email || '',
-      t(r.level) || r.level || '',
-      r.reason || '',
-      t(r.status) || r.status || '',
-      r.date || ''
-    ])
-  );
-}
-
 export function exportCheckinsCSV() {
   const currentEv = store.selectedCheckinEvent;
   const rows = store.db.checkins.filter(r => r.ev === currentEv);
-  downloadCSV(
-    `khutwa-checkin-${currentEv || 'all'}.csv`,
-    ['name', 'phone', 'age', 'time'],
-    rows.map(r => [r.name, r.phone, r.age, r.date || ''])
-  );
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const txt =
+    '\ufeff' +
+    [['name', 'phone', 'age', 'time'], ...rows.map(r => [r.name, r.phone, r.age, r.date || ''])]
+      .map(row => row.map(q).join(','))
+      .join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' }));
+  a.download = `khutwa-checkin-${currentEv || 'all'}.csv`;
+  a.click();
 }
 
 export function printCheckinPoster() {
@@ -556,57 +523,15 @@ export function printCheckinPoster() {
   setTimeout(() => window.print(), 400);
 }
 
-async function rasterizeImage(file) {
-  const draw = (src, w, h) => {
-    const k = Math.min(1, 1600 / Math.max(w || 1, h || 1));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round((w || 800) * k));
-    canvas.height = Math.max(1, Math.round((h || 800) * k));
-    canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
-    return canvas;
-  };
-  if (typeof createImageBitmap === 'function') {
-    try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = draw(bitmap, bitmap.width, bitmap.height);
-      try {
-        bitmap.close && bitmap.close();
-      } catch (e) {}
-      return canvas;
-    } catch (e) {}
-  }
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => {
-      const el = new Image();
-      el.onload = () => res(el);
-      el.onerror = () => rej(new Error('image'));
-      el.src = url;
-    });
-    return draw(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 export async function uploadImageFile(file, scope = 'general') {
   const sb = getSupabase();
-  const canvas = await rasterizeImage(file);
-  const blob = await new Promise((res, rej) => {
-    if (typeof canvas.toBlob === 'function') {
-      canvas.toBlob(b => (b ? res(b) : rej(new Error('toBlob'))), 'image/jpeg', 0.82);
-      return;
-    }
-    try {
-      const data = canvas.toDataURL('image/jpeg', 0.82);
-      const bin = atob(data.split(',')[1] || '');
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      res(new Blob([arr], { type: 'image/jpeg' }));
-    } catch (e) {
-      rej(e);
-    }
-  });
+  const bitmap = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * k);
+  canvas.height = Math.round(bitmap.height * k);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
 
   const prefix = scope === 'general' ? 'gal' : scope;
   const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
