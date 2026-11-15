@@ -289,29 +289,29 @@ export function renderTable(c) {
   const qPh = peopleSearch ? t('search_people') : t('search');
   const fsVal = savedQuery.fs || '';
 
-  return `<div class="bar"><input id="q" type="search" placeholder="${qPh}" aria-label="${t(
+  const filter = g.fl
+    ? `<select id="fs" aria-label="${t('status')}"><option value="">${t(
+        'all'
+      )}</option>${(c === 'events'
+        ? ['open', 'cancelled', 'completed']
+        : c === 'orders'
+        ? ORDER_STATUSES
+        : JOIN_STATUSES
+      )
+        .map(
+          s =>
+            `<option value="${s}"${s === fsVal ? ' selected' : ''}>${t(
+              s
+            )}</option>`
+        )
+        .join('')}</select>`
+    : '';
+
+  return `<div class="tools"><input id="q" class="qbox" type="text" role="searchbox" inputmode="search" placeholder="${qPh}" aria-label="${t(
     'search'
   )}" autocomplete="off" enterkeyhint="search" value="${E(
     savedQuery.q
-  )}">${
-    g.fl
-      ? `<select id="fs" aria-label="${t('status')}"><option value="">${t(
-          'all'
-        )}</option>${(c === 'events'
-          ? ['open', 'cancelled', 'completed']
-          : c === 'orders'
-          ? ORDER_STATUSES
-          : JOIN_STATUSES
-        )
-          .map(
-            s =>
-              `<option value="${s}"${s === fsVal ? ' selected' : ''}>${t(
-                s
-              )}</option>`
-          )
-          .join('')}</select>`
-      : ''
-  }${exp}${add}<span id="upm" class="m"></span></div><div id="ls">${rows
+  )}"><div class="bar">${filter}${exp}${add}<span id="upm" class="m"></span></div></div><div id="ls">${rows
     .map(
       r =>
         `<div class="li" data-s="${r.status || ''}" data-q="${E(
@@ -470,7 +470,7 @@ export function renderCheckinPanel() {
       ([label, count]) =>
         `<div class="card"><div class="big">${count}</div>${label}</div>`
     )
-    .join('')}</div><div class="bar"><input id="q" type="search" placeholder="${t(
+    .join('')}</div><div class="tools"><input id="q" class="qbox" type="text" role="searchbox" inputmode="search" placeholder="${t(
     'search_people'
   )}" aria-label="${t('search')}" autocomplete="off" enterkeyhint="search" value="${E(
     savedQuery.q

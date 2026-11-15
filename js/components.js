@@ -11,7 +11,7 @@ export const tile = g =>
   `<div class="ph im" data-q="${E(recordBlob(g))}" style="background-image:${gi(g)}" role="img" aria-label="${E(L(g.cap) || t('photo'))}"></div>`;
 
 export const searchBar = (people = false) =>
-  `<div class="bar pubq"><input id="q" type="search" placeholder="${t(
+  `<div class="tools pubq"><input id="q" class="qbox" type="text" role="searchbox" inputmode="search" placeholder="${t(
     people ? 'search_people' : 'search'
   )}" aria-label="${t(
     'search'
