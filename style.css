@@ -33,10 +33,12 @@ label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}input,selec
 .tools{margin:12px 0 16px}
 .qbox{display:block;width:100%;min-height:48px;margin:0;padding:12px 16px;border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--fg);font:inherit;-webkit-appearance:none;appearance:none}
 .qbox::placeholder{color:var(--mut);opacity:1}
-.bar{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%;align-items:stretch;margin:12px 0 16px}
-.bar input,.bar select,.bar #q{width:100%;min-width:0;max-width:none;min-height:48px;margin:0}
-.bar-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.bar-actions .btn,.bar-actions label.btn{min-height:48px;display:inline-flex;align-items:center;justify-content:center}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;width:100%;margin:12px 0 16px}
+.bar > input,.bar > select,.bar > #q{flex:1 1 100%;width:100%;min-width:0;max-width:none;height:48px;min-height:48px;margin:0;padding-block:0}
+.bar > select{-webkit-appearance:none;appearance:none;padding-inline:14px 36px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23a3a39d' d='M1 1l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:left 14px center;background-size:12px 8px}
+[dir=ltr] .bar > select{background-position:right 14px center}
+.bar-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1 1 100%}
+.bar-actions .btn,.bar-actions label.btn{min-height:48px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;flex:0 0 auto}
 #q{-webkit-appearance:none;appearance:none;padding-inline:14px}
 .act{white-space:nowrap}.act .btn{margin:2px}
 .lc select{width:auto;min-width:128px;max-width:100%}
@@ -213,9 +215,10 @@ img.tmb{width:64px;height:64px}
 html.no-hero #hero{display:none!important}
 #app{min-height:calc(100dvh - var(--navh,64px))}
 @media(min-width:861px){
-  .bar:has(.bar-actions){grid-template-columns:minmax(0,1fr) auto;align-items:center}
-  .bar:has(#fs){grid-template-columns:minmax(0,1fr) minmax(168px,220px) auto}
-  .bar-actions{display:flex;width:auto}
+  .bar > #q,.bar > input[type=text]{flex:1 1 320px;width:auto;min-width:min(100%,280px)}
+  .bar > select{flex:0 0 210px;width:210px;min-width:210px;max-width:210px}
+  .bar-actions{flex:0 0 auto;width:auto;margin-inline-start:0}
   .bar-actions .btn,.bar-actions label.btn{width:auto}
 }
+.am{min-width:0}
 
