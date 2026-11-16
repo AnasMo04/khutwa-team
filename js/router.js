@@ -305,7 +305,7 @@ function renderInner() {
     .map(x => A(x, t(x)))
     .join(' · ')}</p><p><a href="${U(IG())}" target="_blank" rel="noopener">Instagram</a> · <a href="${U(
     WA()
-  )}" target="_blank" rel="noopener">WhatsApp</a> (${t('ph')})</p><p>${[store.db.set.phone, store.db.set.email]
+  )}" target="_blank" rel="noopener">WhatsApp</a></p><p>${[store.db.set.phone, store.db.set.email]
     .filter(Boolean)
     .map(E)
     .join(' · ') || t('contact')}</p><p>${

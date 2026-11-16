@@ -33,8 +33,9 @@ label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}input,selec
 .tools{margin:12px 0 16px}
 .qbox{display:block;width:100%;min-height:48px;margin:0;padding:12px 16px;border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--fg);font:inherit;-webkit-appearance:none;appearance:none}
 .qbox::placeholder{color:var(--mut);opacity:1}
-.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.bar{display:flex;width:100%;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0 16px}
 .bar input,.bar select{width:auto;min-width:0}
+.bar #q,.bar input[type=search]{flex:1 1 240px;min-width:min(100%,220px);width:auto;max-width:none}
 .bar select{flex:0 1 180px;min-width:140px;max-width:240px}
 .bar .btn,.bar label.btn{flex:0 0 auto;white-space:nowrap}
 .act{white-space:nowrap}.act .btn{margin:2px}

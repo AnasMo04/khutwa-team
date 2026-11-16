@@ -34,7 +34,7 @@ export const views = {
         .slice(0, 3)
         .map(evCard)
         .join('') || `<div class="card"><p>${t('empty')}</p></div>`}</div>`,
-      t('samp'),
+      0,
       's1'
     ) +
     MQ() +
@@ -92,9 +92,7 @@ export const views = {
       'btn p'
     )} <a class="btn" href="${U(IG())}" target="_blank" rel="noopener">Instagram</a> <a class="btn" href="${U(
       WA()
-    )}" target="_blank" rel="noopener">WhatsApp</a></p><p class="m">${t(
-      'ph'
-    )}</p></div></section>`,
+    )}" target="_blank" rel="noopener">WhatsApp</a></p></div></section>`,
 
   events: () =>
     sc(
@@ -108,7 +106,7 @@ export const views = {
         .sort((a, b) => (a.when < b.when ? 1 : -1))
         .map(evCard)
         .join('') || `<div class="card"><p>${t('empty')}</p></div>`}</div>`,
-      t('samp'),
+      0,
       's1'
     ),
 
