@@ -1,0 +1,22 @@
+---
+description: Khutwa colors, one lime button, 48px targets, and spacing
+globs: style.css,js/views.js,js/components.js,js/admin.js
+alwaysApply: false
+---
+
+# Visual tokens
+
+Colors stay `#0b0b0b`, `#c8ff2e`, `#f5f5f2`, dark `#121212`. Text on lime is `#0b0b0b`.
+
+One `.btn.p` per region. `.btn.d` is last. Min height 48px until 860px. Spacing scale: 8, 12, 16, 24, 48, 72. Page padding 12 at 320px.
+
+```css
+/* BAD: two filled buttons, white type on lime */
+.btn.p { color: #fff; }
+
+/* GOOD */
+.btn.p { background: var(--ac); color: #0b0b0b; }
+.btn.d { margin-inline-start: auto; }
+```
+
+Read `.cursor/skills/mobile-320-a11y/SKILL.md` before saving layout changes. Do not remove `:focus-visible`.

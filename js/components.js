@@ -7,7 +7,28 @@ function cssUrl(u) {
   return `url('${s}')`;
 }
 
-export const gi = g => (g && g.url && cssUrl(g.url)) || (g && g.i ? `var(--i${g.i})` : '');
+export function safeSrc(u) {
+  const s = String(u || '').trim();
+  if (/^https?:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
+  if (/^img\/img-[1-4]\.jpg$/i.test(s)) return s;
+  return '';
+}
+
+export function imageSrc(g) {
+  const url = g && safeSrc(g.url);
+  if (url) return url;
+  if (g && /^[1-4]$/.test(String(g.i ?? ''))) return `img/img-${g.i}.jpg`;
+  return '';
+}
+
+export function bgImage(g) {
+  const url = g && cssUrl(g.url);
+  if (url) return url;
+  if (g && /^[1-4]$/.test(String(g.i ?? ''))) return `var(--i${g.i})`;
+  return '';
+}
+
+export const gi = bgImage;
 
 /** Kilometers already run and the monthly goal. Missing or invalid settings fall back to 312 / 500. */
 export function challengeBar() {
@@ -25,8 +46,17 @@ export const gb = id => {
   const g = store.db.gal.find(x => x.id === id);
   return g ? gi(g) : '';
 };
-export const tile = g =>
-  `<div class="ph im" style="background-image:${gi(g)}" role="img" aria-label="${E(L(g.cap) || t('photo'))}"></div>`;
+export const srcFor = id => {
+  const g = id && store.db.gal.find(x => x.id === id);
+  return g ? imageSrc(g) : '';
+};
+export const tile = g => {
+  const src = imageSrc(g);
+  const alt = E(L(g.cap) || t('photo'));
+  return src
+    ? `<img class="ph im" src="${E(src)}" alt="${alt}" width="515" height="765" loading="lazy" decoding="async">`
+    : `<div class="ph" role="img" aria-label="${alt}"></div>`;
+};
 
 export const IG = () => store.db.set.ig || 'https://www.instagram.com/';
 export const WA = () => 'https://wa.me/' + (store.db.set.wa || '').replace(/\D/g, '');
@@ -91,14 +121,22 @@ export const waLink = v =>
 export const isUpcoming = v =>
   v.status !== 'completed' && new Date(v.when) > new Date();
 
-export const evCard = v =>
-  `<article class="card">${
-    gb(v.img) ? `<div class="cov" style="background-image:${gb(v.img)}"></div>` : ''
+export const evCard = v => {
+  const cover = srcFor(v.img);
+  return `<article class="card ev-card">${
+    cover
+      ? `<img class="cov" src="${E(cover)}" alt="" width="800" height="450" loading="lazy" decoding="async">`
+      : ''
   }<span class="tag">${t(v.type)}</span><span class="tag g">${t(v.status)}</span>${
     v.beginner ? `<span class="tag g">${t('beginner')}</span>` : ''
   }<h3>${E(L(v.title))}</h3><p class="m">${fmt(v.when)} · ${v.km} ${t('kmu')}<br>${E(
     L(v.point)
-  )}</p><p>${E(L(v.desc))}</p>${A('event-' + v.id, t('details'), 'btn s')}</article>`;
+  )}</p><p class="clip">${E(L(v.desc))}</p><div class="card-act">${A(
+    'event-' + v.id,
+    t('details'),
+    'btn s'
+  )}</div></article>`;
+};
 
 export const achCard = a => {
   const catLabel = a.cat ? t(a.cat) : '';
@@ -135,13 +173,12 @@ export const nextRunBadge = () => {
 };
 
 export const tee = p => {
-  const im = p.img && gb(p.img);
-  return `<div class="tee" role="img" aria-label="${E(L(p.name))}"${
-    im ? ` style="background-image:${im}"` : ''
-  }>${
-    im
-      ? ''
-      : `<div class="tee-placeholder"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M70 20l-50 22 16 40 24-8v106h80V74l24 8 16-40-50-22c-6 14-18 22-30 22S76 34 70 20z" fill="#111" stroke="#3a3a3a" stroke-width="2"/></svg><span class="lgo"></span><small>${t(
+  const src = srcFor(p.img);
+  const alt = E(L(p.name));
+  return `<div class="tee">${
+    src
+      ? `<img src="${E(src)}" alt="${alt}" width="800" height="600" loading="lazy" decoding="async">`
+      : `<div class="tee-placeholder" role="img" aria-label="${alt}"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M70 20l-50 22 16 40 24-8v106h80V74l24 8 16-40-50-22c-6 14-18 22-30 22S76 34 70 20z" fill="#111" stroke="#3a3a3a" stroke-width="2"/></svg><span class="lgo"></span><small>${t(
           'mock'
         )}</small></div>`
   }</div>`;

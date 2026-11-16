@@ -36,11 +36,18 @@ export async function bootstrap() {
   }
 
   if (IS_LIVE) {
-    const app = $('#app');
-    if (app) app.innerHTML = '<p class="w boot" style="padding:60px 20px">…</p>';
+    store.loadDemo();
+    render();
     try {
-      store.isAdmin = await withTimeout(verifyOrganizerPrivileges(), 8000);
+      const adminPromise = withTimeout(verifyOrganizerPrivileges(), 8000).catch(() => false);
       await withTimeout(store.loadFromSupabase(), 12000);
+      render();
+      store.isAdmin = await adminPromise;
+      if (store.isAdmin) {
+        await store.loadPeopleFromSupabase();
+        startLiveUpdates(onLiveData);
+        render();
+      }
     } catch (err) {
       report(err, 'e_net');
       try {
@@ -52,8 +59,6 @@ export async function bootstrap() {
       toast(t('e_net'));
       return;
     }
-    if (store.isAdmin) startLiveUpdates(onLiveData);
-    render();
   } else {
     store.loadDemo();
     render();

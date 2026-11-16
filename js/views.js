@@ -15,32 +15,17 @@ import {
   achCard,
   inp,
   tail,
-  nextRunBadge,
   challengeBar,
   tee,
   prod,
   tile,
   IG,
   WA,
-  gb
+  srcFor
 } from './components.js';
 
 export const views = {
   home: () =>
-    `<div class="hero dk">${[4]
-      .map(
-        n =>
-          `<div class="sl" style="background-image:${
-            (store.db.set.hero && gb(store.db.set.hero)) || 'var(--i' + n + ')'
-          }" role="img" aria-label="${t('photo')}"></div>`
-      )
-      .join('')}<div class="ov"></div>${SH()}<div class="w"><p class="eye">KHUTWA TEAM · ${t(
-      'city'
-    )}</p><h1>${t('tag')}</h1>${nextRunBadge()}<p>${A(
-      'events',
-      t('cta1'),
-      'btn p'
-    )} ${A('join', t('cta2'), 'btn')}</p></div></div>` +
     sc(
       t('upc'),
       `<div class="grid">${store.db.events
@@ -48,7 +33,7 @@ export const views = {
         .sort((a, b) => (a.when < b.when ? -1 : 1))
         .slice(0, 3)
         .map(evCard)
-        .join('') || t('empty')}</div>`,
+        .join('') || `<div class="card"><p>${t('empty')}</p></div>`}</div>`,
       t('samp'),
       's1'
     ) +
@@ -118,11 +103,11 @@ export const views = {
         .filter(isUpcoming)
         .sort((a, b) => (a.when < b.when ? -1 : 1))
         .map(evCard)
-        .join('') || t('empty')}</div><h3>${t('past')}</h3><div class="grid">${store.db.events
+        .join('') || `<div class="card"><p>${t('empty')}</p></div>`}</div><h3>${t('past')}</h3><div class="grid">${store.db.events
         .filter(v => !isUpcoming(v))
         .sort((a, b) => (a.when < b.when ? 1 : -1))
         .map(evCard)
-        .join('') || t('empty')}</div>`,
+        .join('') || `<div class="card"><p>${t('empty')}</p></div>`}</div>`,
       t('samp'),
       's1'
     ),
@@ -146,9 +131,11 @@ export const views = {
         v.when
       )} · ${v.km} ${t('kmu')}</p><p>${E(L(v.desc))}</p><p><b>${t(
         'point'
-      )}:</b> ${E(L(v.point))} · <a href="${U(
-        v.map
-      )}" target="_blank" rel="noopener">${t('mapbtn')}</a></p><p><a class="btn s" href="${E(
+      )}:</b> ${E(L(v.point))}${
+        /^https?:\/\//.test(v.map || '')
+          ? ` · <a href="${U(v.map)}" target="_blank" rel="noopener">${t('mapbtn')}</a>`
+          : ''
+      }</p><p class="ev-actions"><a class="btn s" href="${E(
         gcal(v)
       )}" target="_blank" rel="noopener">${t('cal')}</a> <a class="btn s" href="${E(
         waLink(v)
@@ -190,17 +177,17 @@ export const views = {
         .filter(m => m.pub)
         .map(
           m =>
-            `<article class="card"><div class="av"${
-              gb(m.photo)
-                ? ` style="background-image:${gb(
-                    m.photo
-                  )};background-size:cover;color:transparent"`
-                : ''
-            }>${E([...L(m.name)][0])}</div><h3>${E(L(m.name))}</h3><p>${E(
+            `<article class="card"><div class="av">${
+              srcFor(m.photo)
+                ? `<img src="${E(srcFor(m.photo))}" alt="" width="56" height="56" loading="lazy" decoding="async">`
+                : E([...L(m.name)][0])
+            }</div><h3>${E(L(m.name))}</h3><p class="bio">${E(
               L(m.bio)
-            )}</p><p class="m">${t('interests')}: ${E(
+            )}</p>${
               L(m.interests)
-            )}</p><span class="tag g">${t('sample')}</span></article>`
+                ? `<p><span class="tag g wrap">${E(L(m.interests))}</span></p>`
+                : ''
+            }</article>`
         )
         .join('') || t('empty')}</div>`,
       t('comm_p') + ' ' + t('about_p'),
@@ -230,13 +217,16 @@ export const views = {
             const levelTag = r.level ? `<span class="tag">${t(r.level)}</span>` : '';
             const kmText = r.km != null && r.km !== '' ? `${r.km} ${t('kmu')}` : '';
             const fromText = L(r.from);
-            const metaParts = [kmText, fromText ? `${t('from')}: ${E(fromText)}` : ''].filter(Boolean).join(' · ');
             const safetyText = L(r.safety);
-            const mapLink = r.map ? `<div class="card-act"><a class="btn s" href="${U(r.map)}" target="_blank" rel="noopener">${t('mapbtn')}</a></div>` : '';
+            const mapLink = /^https?:\/\//.test(r.map || '')
+              ? `<div class="card-act"><a class="btn s" href="${U(r.map)}" target="_blank" rel="noopener">${t('mapbtn')}</a></div>`
+              : '';
 
             return `<article class="card route-card">${levelTag}<h3>${E(
               L(r.name)
-            )}</h3>${metaParts ? `<p class="m">${metaParts}</p>` : ''}${
+            )}${kmText ? `<span class="route-km">${kmText}</span>` : ''}</h3>${
+              fromText ? `<p class="m">${t('from')}: ${E(fromText)}</p>` : ''
+            }${
               safetyText ? `<p class="route-safety"><b>${t('safety')}:</b> ${E(safetyText)}</p>` : ''
             }${mapLink}</article>`;
           }
@@ -294,7 +284,7 @@ export const views = {
   join: () =>
     sc(
       t('join_h'),
-      `${backBtn('home', 'back')}<form class="card" data-f="join" novalidate>${inp(
+      `${backBtn('home', 'back')}<form class="card join-form" data-f="join" novalidate>${inp(
         'name',
         'fname',
         1

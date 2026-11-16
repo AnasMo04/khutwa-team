@@ -1,7 +1,7 @@
 import { $, t, E, U, getLang, isDark } from './utils.js';
 import { IS_LIVE } from './supabase.js';
 import { store } from './data.js';
-import { A, SH, IG, WA } from './components.js';
+import { A, SH, IG, WA, nextRunBadge, srcFor } from './components.js';
 import { views } from './views.js';
 import { renderAdminView } from './admin.js';
 import { applySearchFilter, resetSavedQuery, restoreSearchInputs } from './search.js';
@@ -279,6 +279,26 @@ function renderInner() {
   else if (views[routeKey]) app.innerHTML = views[routeKey](routeParam);
   else app.innerHTML = views.home();
 
+  const heroEl = $('#hero');
+  if (heroEl) {
+    heroEl.hidden = routeKey !== 'home';
+    if (!heroEl.querySelector('.shp')) heroEl.insertAdjacentHTML('afterbegin', SH());
+    const img = heroEl.querySelector('img.sl');
+    const remote = srcFor(store.db.set && store.db.set.hero);
+    if (img && remote) {
+      img.removeAttribute('srcset');
+      img.src = remote;
+    }
+    const eye = heroEl.querySelector('.eye');
+    const heading = heroEl.querySelector('h1');
+    const acts = heroEl.querySelector('.hero-act');
+    if (eye) eye.textContent = 'KHUTWA TEAM · ' + t('city');
+    if (heading) heading.textContent = t('tag');
+    if (acts) {
+      acts.innerHTML = `${nextRunBadge()}<p>${A('events', t('cta1'), 'btn p')} ${A('join', t('cta2'), 'btn')}</p>`;
+    }
+  }
+
   ft.innerHTML = `<footer>${SH()}<div class="w"><p class="logo"><span class="lgo big" role="img" aria-label="KHUTWA TEAM"></span></p><p>${t(
     'tag'
   )}</p><p>${['home', 'events', 'community', 'ach', 'routes', 'shop', 'tools', 'join']
@@ -331,6 +351,8 @@ function syncViewport() {
   const vv = window.visualViewport;
   if (!vv) return;
   document.documentElement.style.setProperty('--vvh', Math.max(240, Math.round(vv.height - 16)) + 'px');
+  const keyboard = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  document.documentElement.style.setProperty('--kb', keyboard + 'px');
 }
 
 function startCountdown() {

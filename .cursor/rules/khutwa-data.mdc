@@ -1,0 +1,22 @@
+---
+description: Khutwa Supabase commit, phone, honeypot, and export guards
+globs: js/data.js,js/forms.js,js/supabase.js,js/admin.js,supabase-setup.sql
+alwaysApply: false
+---
+
+# Data guard
+
+Read `.cursor/skills/supabase-data-guard/SKILL.md` before editing these files.
+
+Challenge values live only in `store.db.set.challenge`. Empty or non-numeric fields keep 312 and 500. Do not write 0.
+
+```js
+// BAD: save the rest after a bad date
+fields.forEach(saveField);
+
+// GOOD: abort the whole save
+if (badDate) { toast('e_valid'); return; }
+await store.commit(mutator);
+```
+
+On `syncToSupabase` failure, restore local `db` and `snap`, then rethrow. Do not pretend the remote write was undone. Empty exports toast `empty` and skip `saveBlob`.

@@ -74,7 +74,7 @@ function displayCheckinSuccess(form, record, msgKey) {
   card.innerHTML = `<h2>${t(msgKey)}</h2><p class="m">${E(L(ev.title))} · ${E(record.name)}</p><p>${A(
     'join',
     t('cta2'),
-    'btn p s'
+    'btn'
   )}</p>${IS_LIVE ? '' : `<p class="m">${t('demo_note')}</p>`}`;
 }
 
@@ -295,7 +295,7 @@ async function savePublic(form, formKind, data) {
       msgEl.innerHTML +=
         (IS_LIVE ? '' : `<p class="m">${t('demo_note')}</p>`) +
         (store.db.set.wa
-          ? `<p><a class="btn p s" href="${U(WA())}?text=${encodeURIComponent(
+          ? `<p><a class="btn" href="${U(WA())}?text=${encodeURIComponent(
               'KHUTWA TEAM · ' +
                 (formKind === 'reg'
                   ? L((store.db.events.find(r => r.id === data.ev) || {}).title)

@@ -2,7 +2,7 @@ import { store, CONTENT_KINDS, PEOPLE_KINDS, TABLE_MAP } from './data.js';
 import { IS_LIVE, signIn, signOut, verifyOrganizerPrivileges, getSupabase } from './supabase.js';
 import { S } from './translations.js';
 import { t, E, L, fmt, U, $, toast, normPhone } from './utils.js';
-import { A, backBtn, sc, isUpcoming } from './components.js';
+import { A, backBtn, sc, isUpcoming, imageSrc } from './components.js';
 
 export const ORDER_STATUSES = ['new', 'contacted', 'confirmed', 'delivered', 'cancelled'];
 export const JOIN_STATUSES = ['pending', 'approved', 'rejected'];
@@ -91,7 +91,7 @@ const NAV_GROUPS = [
 export function renderLoginView() {
   return sc(
     t('admin_live'),
-    `<form class="card" data-f="login" style="max-width:420px"><h3>${t(
+    `<form class="card login-form" data-f="login"><h3>${t(
       'login_h'
     )}</h3><label>${t(
       'em'
@@ -242,10 +242,12 @@ function cell(c, k, r) {
   if (k === 'price') return v ? `${v} ${t('lyd')}` : t('price_tba');
   if (k === 'pid')
     return E(L((store.db.shop.find(x => x.id === v) || {}).name));
-  if (k === 'thumb')
-    return `<span class="tmb" style="background-image:${
-      r.url && /^https?:\/\/[^\s"'()<>\\]+$/i.test(r.url) ? `url('${r.url}')` : `var(--i${r.i})`
-    }"></span>`;
+  if (k === 'thumb') {
+    const src = imageSrc(r);
+    return src
+      ? `<img class="tmb" src="${E(src)}" alt="" width="64" height="64" loading="lazy" decoding="async">`
+      : '<span class="tmb"></span>';
+  }
   if (k === 'status' && (c === 'joins' || c === 'orders' || c === 'shop')) {
     const list = c === 'orders' ? ORDER_STATUSES : c === 'shop' ? ['avail', 'soldout'] : JOIN_STATUSES;
     return `<select data-st="${r.id}" data-c="${c}" aria-label="${t(
@@ -363,19 +365,19 @@ export function openEditForm(c, id) {
             .join('');
         }
         if (ty === 'd') {
-          return `<label>${label}<input type="datetime-local" name="${k}" required value="${
+          return `<label class="span2">${label}<input type="datetime-local" name="${k}" required value="${
             v
               ? new Date(new Date(v).getTime() + 72e5).toISOString().slice(0, 16)
               : ''
           }"></label>`;
         }
         if (ty === 'n') {
-          return `<label>${label}<input type="number" step="any" min="0" name="${k}" value="${
+          return `<label class="span2">${label}<input type="number" step="any" min="0" name="${k}" value="${
             v ?? ''
           }"></label>`;
         }
         if (ty === 's') {
-          return `<label>${label}<select name="${k}">${o
+          return `<label class="span2">${label}<select name="${k}">${o
             .map(
               opt =>
                 `<option value="${opt}"${opt === v ? ' selected' : ''}>${t(
@@ -396,22 +398,24 @@ export function openEditForm(c, id) {
             )
             .join('');
 
-          return `<label>${label}<select name="${k}" id="sel_${k}"><option value="">-</option>${options}</select></label><div style="margin-top:-6px;margin-bottom:10px"><label class="btn s" style="margin:0;display:inline-block;cursor:pointer">${t(
+          return `<div class="span2"><label>${label}<select name="${k}" id="sel_${k}"><option value="">-</option>${options}</select></label><div class="up-row"><label class="btn s">${t(
             'upl_single'
-          )}<input type="file" class="f-entity-up" data-k="${k}" data-scope="${entityScope}" accept="image/*" hidden></label><span id="up_${k}_msg" class="m" style="margin-inline-start:8px"></span></div>`;
+          )}<input type="file" class="f-entity-up" data-k="${k}" data-scope="${entityScope}" accept="image/*" hidden></label><span id="up_${k}_msg" class="m"></span></div></div>`;
         }
         if (ty === 'c') {
-          return `<label><input type="checkbox" name="${k}" style="width:auto"${
+          return `<label class="span2"><input type="checkbox" name="${k}" style="width:auto"${
             v ? ' checked' : ''
           }> ${label}</label>`;
         }
-        return `<label>${label}<input name="${o || k}" value="${E(
+        return `<label class="span2">${label}<input name="${o || k}" value="${E(
           r[o || k] || ''
         )}"></label>`;
       })
       .join('');
 
   if (typeof dlg.showModal === 'function') dlg.showModal();
+  const firstField = fb.querySelector('input:not([type=hidden]):not([type=file]), select, textarea');
+  if (firstField) firstField.focus();
 }
 
 export function renderCheckinPanel() {
@@ -440,7 +444,7 @@ export function renderCheckinPanel() {
           L(v.title)
         )} · ${fmt(v.when)}</option>`
     )
-    .join('')}</select></label><p><button class="btn p s" data-a="ciopen">${t(
+    .join('')}</select></label><p class="ci-actions"><button class="btn p s" data-a="ciopen">${t(
     'open_ci'
   )}</button> <button class="btn s" data-a="ciclose">${t(
     'close_ci'
@@ -600,12 +604,13 @@ export async function printCheckinPoster() {
 export async function uploadImageFile(file, scope = 'general') {
   const sb = getSupabase();
   const bitmap = await createImageBitmap(file);
-  const k = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const k = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * k);
   canvas.height = Math.round(bitmap.height * k);
   canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.72));
+  bitmap.close();
 
   const prefix = scope === 'general' ? 'gal' : scope;
   const path = `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
