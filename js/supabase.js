@@ -23,6 +23,28 @@ export function getSupabase() {
   return supabaseClient;
 }
 
+let supabaseReady;
+
+export function whenSupabase() {
+  if (!IS_LIVE) return Promise.resolve(null);
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    return Promise.resolve(getSupabase());
+  }
+  if (!supabaseReady) {
+    supabaseReady = new Promise(resolve => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        const ready = window.supabase && typeof window.supabase.createClient === 'function';
+        if (ready || Date.now() - started > 4000) {
+          clearInterval(timer);
+          resolve(getSupabase());
+        }
+      }, 40);
+    });
+  }
+  return supabaseReady;
+}
+
 /**
  * Sign in using Supabase Auth signInWithPassword.
  * Returns { user, session, error }.
@@ -80,7 +102,7 @@ export async function signOut() {
  */
 export async function verifyOrganizerPrivileges() {
   if (!IS_LIVE) return false;
-  const sb = getSupabase();
+  const sb = await whenSupabase();
   if (sb) {
     const { data: sessionData } = await sb.auth.getSession();
     const session = sessionData?.session;

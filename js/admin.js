@@ -264,6 +264,12 @@ function cell(c, k, r) {
   return E(typeof v === 'string' && S[v] ? t(v) : L(v));
 }
 
+function searchBox() {
+  return `<input id="q" class="qbox" type="text" role="searchbox" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="${t(
+    'search'
+  )}" aria-label="${t('search')}">`;
+}
+
 export function renderTable(c) {
   const g = ADMIN_CONFIG[c];
   if (!g) return `<div class="card"><p>${t('empty')}</p></div>`;
@@ -290,9 +296,7 @@ export function renderTable(c) {
       )}</button>`
     : '';
 
-  return `<div class="bar"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="${t(
-    'search'
-  )}" aria-label="${t('search')}">${
+  return `<div class="bar">${searchBox()}${
     g.fl
       ? `<select id="fs" aria-label="${t('status')}"><option value="">${t(
           'all'
@@ -305,7 +309,7 @@ export function renderTable(c) {
           .map(s => `<option value="${s}">${t(s)}</option>`)
           .join('')}</select>`
       : ''
-  }${add}${exports}<span id="upm" class="m"></span></div><div id="ls">${rows
+  }<div class="bar-actions">${add}${exports}<span id="upm" class="m"></span></div></div><div id="ls">${rows
     .map(
       r =>
         `<div class="li" data-s="${r.status || ''}"><div class="lm"><b>${cell(
@@ -465,9 +469,7 @@ export function renderCheckinPanel() {
       ([label, count]) =>
         `<div class="card"><div class="big">${count}</div>${label}</div>`
     )
-    .join('')}</div><div class="bar"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="${t(
-    'search'
-  )}" aria-label="${t('search')}"></div><div id="ls">${rows
+    .join('')}</div><div class="bar">${searchBox()}</div><div id="ls">${rows
     .map(
       r =>
         `<div class="li" data-phone="${E(normPhone(r.phone))}"><div class="lm"><b>${E(r.name)}</b><div class="lc"><span><em>${t(

@@ -280,22 +280,29 @@ function renderInner() {
   else app.innerHTML = views.home();
 
   const heroEl = $('#hero');
+  document.documentElement.classList.toggle('no-hero', routeKey !== 'home');
   if (heroEl) {
     heroEl.hidden = routeKey !== 'home';
-    if (!heroEl.querySelector('.shp')) heroEl.insertAdjacentHTML('afterbegin', SH());
-    const img = heroEl.querySelector('img.sl');
-    const remote = srcFor(store.db.set && store.db.set.hero);
-    if (img && remote) {
-      img.removeAttribute('srcset');
-      img.src = remote;
-    }
-    const eye = heroEl.querySelector('.eye');
-    const heading = heroEl.querySelector('h1');
-    const acts = heroEl.querySelector('.hero-act');
-    if (eye) eye.textContent = 'KHUTWA TEAM · ' + t('city');
-    if (heading) heading.textContent = t('tag');
-    if (acts) {
-      acts.innerHTML = `${nextRunBadge()}<p>${A('events', t('cta1'), 'btn p')} ${A('join', t('cta2'), 'btn')}</p>`;
+    if (routeKey === 'home') {
+      if (!heroEl.querySelector('.shp')) heroEl.insertAdjacentHTML('afterbegin', SH());
+      const img = heroEl.querySelector('img.sl');
+      const remote = srcFor(store.db.set && store.db.set.hero);
+      if (img && remote) {
+        img.removeAttribute('srcset');
+        img.src = remote;
+      } else if (img && !img.getAttribute('src')) {
+        img.src = 'img/img-4-800.jpg';
+        img.srcset = 'img/img-4-800.jpg 800w, img/img-4.jpg 1672w';
+        img.sizes = '100vw';
+      }
+      const eye = heroEl.querySelector('.eye');
+      const heading = heroEl.querySelector('h1');
+      const acts = heroEl.querySelector('.hero-act');
+      if (eye) eye.textContent = 'KHUTWA TEAM · ' + t('city');
+      if (heading) heading.textContent = t('tag');
+      if (acts) {
+        acts.innerHTML = `${nextRunBadge()}<p>${A('events', t('cta1'), 'btn p')} ${A('join', t('cta2'), 'btn')}</p>`;
+      }
     }
   }
 

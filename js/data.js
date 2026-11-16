@@ -1,4 +1,4 @@
-import { getSupabase, IS_LIVE, SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
+import { getSupabase, whenSupabase, IS_LIVE, SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
 import { sg, ss, uid } from './utils.js';
 import { report } from './log.js';
 
@@ -240,7 +240,7 @@ export class Store {
   }
 
   async loadFromSupabase() {
-    const sb = getSupabase();
+    const sb = await whenSupabase();
     if (!sb) {
       this.loadDemo();
       return;
